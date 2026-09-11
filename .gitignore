@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build
+dist/
+build/
+target/
+out/
+*.class
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+secrets/
+
+# IDE
+.idea/
+*.iml
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Java / Kotlin
+*.jar
+*.war
+.gradle/
+.mvn/
+hs_err_pid*
+
+# Angular
+.angular/
+
+# Coverage
+coverage/
