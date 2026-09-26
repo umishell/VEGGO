@@ -1,6 +1,4 @@
-# !VEGO! Proposta de MVP — operação transacional de delivery (loja única)
-
-
+# !VEGGO! Proposta de MVP — operação transacional de delivery (loja única)
 
 Sistema para **uma** hamburgueria vegana de delivery propria): o cliente pede, a cozinha opera o pedido, o entregador assume a corrida. O núcleo é o **ciclo de vida do pedido**, com regras de negócio, transições de estado, transações ACID e alocação exclusiva do motoboy sob concorrência.
 
