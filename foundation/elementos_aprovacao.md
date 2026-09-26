@@ -7,7 +7,7 @@ Visão geral. O que falta aqui vira argumento de reprovação ou de “CRUD com 
 ## Stack
 
 - Kotlin + Spring Boot + JPA (backend)
-- Angular (frontend)
+- Frontend SPA: React ou Angular por superfície (não misturar as duas na mesma app). Angular em backoffice/gestão; React em cliente de jogo ou fluxo mais interativo
 - Fastify como API gateway / BFF
 - Redis (sessão, denylist, logout forçado)
 - PostgreSQL (modelo relacional normalizado)
@@ -70,12 +70,13 @@ Visão geral. O que falta aqui vira argumento de reprovação ou de “CRUD com 
 - Entidades de instância (nada de “item genérico” quando o domínio exige unicidade)
 - Script SQL de criação do banco (schema completo, reproduzível)
 - Flyway: migrações versionadas + seed (perfis, dados de demonstração da banca)
-- Soft constraints de negócio no banco, não só no Angular
+- Soft constraints de negócio no banco, não só no frontend
 
 ---
 
-## IHC (Angular)
+## IHC (React ou Angular)
 
+- Mesmos requisitos de IHC independente da SPA escolhida
 - Fluxos por persona/perfil (menu e ações mudam com FGAC)
 - Navegação dirigida pelos links da API (UI não inventa transição ilegal)
 - Estados vazios, erro e loading
@@ -87,7 +88,7 @@ Visão geral. O que falta aqui vira argumento de reprovação ou de “CRUD com 
 ## Qualidade mínima de entrega
 
 - Testes das transações críticas (serviço + concorrência)
-- Docker Compose: Spring + PostgreSQL + Redis + Fastify + Angular
+- Docker Compose: Spring + PostgreSQL + Redis + Fastify + SPA (React ou Angular)
 - Logs com correlação no fluxo gateway → backend
 - README de subida local e recorte de escopo (o que está fora)
 
@@ -106,4 +107,4 @@ Visão geral. O que falta aqui vira argumento de reprovação ou de “CRUD com 
 - Catálogo de requests e responses JSON esperados (front ↔ back, inclusive erros e links HATEOAS)
 - Protótipo/fluxo de telas
 - Script SQL de criação do banco + Flyway com seed
-- Decisões explícitas: HTTPS, Argon2id, cookies, Redis, monólito, Richardson 3
+- Decisões explícitas: HTTPS, Argon2id, cookies, Redis, monólito, Richardson 3, React vs Angular por superfície
