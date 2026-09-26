@@ -1,6 +1,8 @@
-# Proposta de MVP — operação transacional de delivery (loja única)
+# !VEGO! Proposta de MVP — operação transacional de delivery (loja única)
 
-Sistema para **uma** hamburgueria de delivery propria): o cliente pede, a cozinha opera o pedido, o entregador assume a corrida. O núcleo é o **ciclo de vida do pedido**, com regras de negócio, transições de estado, transações ACID e alocação exclusiva do motoboy sob concorrência.
+
+
+Sistema para **uma** hamburgueria vegana de delivery propria): o cliente pede, a cozinha opera o pedido, o entregador assume a corrida. O núcleo é o **ciclo de vida do pedido**, com regras de negócio, transições de estado, transações ACID e alocação exclusiva do motoboy sob concorrência.
 
 Este documento é a definição do MVP: o que o sistema **é**.
 
@@ -27,6 +29,8 @@ Checkout revalida disponibilidade no commit: item pausado depois do carrinho abo
 Dois motoboys não ficam com o mesmo pedido: um ganha; o outro recebe 409.
 
 ---
+
+
 
 ## 2. Perfis, aplicações e telas
 
@@ -80,6 +84,8 @@ Cliente cria pedido e pagamento simulado
 
 ---
 
+
+
 ## 3. Autorização (RBAC + FGAC)
 
 **RBAC** define o tipo de ação. **FGAC** decide se *este* usuário pode agir *neste* recurso *neste* estado.
@@ -106,7 +112,11 @@ FGAC no domínio Spring (`PedidoPolicy`, `CatalogoPolicy`, `UsuarioPolicy`): `@P
 
 ---
 
+
+
 ## 4. Estados e transações
+
+
 
 ### Pedido
 
@@ -126,6 +136,8 @@ stateDiagram-v2
     PRONTO --> CANCELADO: ainda sem alocação
     ALOCADO --> PRONTO: desistência ou timeout
 ```
+
+
 
 
 
@@ -150,6 +162,8 @@ Checkout feliz: `Pedido.RECEBIDO` e `Pagamento.CONFIRMADO` no mesmo `@Transactio
 PostgreSQL é a fonte da verdade. Redis guarda só sessão e revogação.
 
 ---
+
+
 
 ## 5. Arquitetura e infraestrutura
 
@@ -188,6 +202,8 @@ Exposto ao usuário: HTTPS no gateway. Correlation id (`X-Correlation-Id`) do ga
 
 ---
 
+
+
 ## 6. Gateway Fastify
 
 Porta única (BFF): TLS, cookies `HttpOnly` + `Secure` + `SameSite` (access e refresh JWT), rotação de refresh, CSRF cookie-to-cookie, CORS das duas origens, rate limit em login e checkout, proxy para o Spring, reescrita dos `_links` para a URL pública, `X-Correlation-Id`.
@@ -195,6 +211,8 @@ Porta única (BFF): TLS, cookies `HttpOnly` + `Secure` + `SameSite` (access e re
 Node 22, Fastify 5, `@fastify/cookie`, `@fastify/cors`, `@fastify/rate-limit`, proxy HTTP.
 
 ---
+
+
 
 ## 7. Backend — módulos e pastas
 
@@ -227,6 +245,8 @@ infra/          JPA, adapters de segurança
 
 ---
 
+
+
 ## 8. Dados
 
 PostgreSQL 16, um schema `app`, 3FN. Preços e totais do pedido são snapshot no checkout. Flyway + seed (loja, um usuário por perfil, cardápio, pedidos em estados distintos para demonstração).
@@ -249,6 +269,8 @@ Constraints no banco: `CHECK` de estados, FKs, unique de pagamento. Refresh toke
 
 ---
 
+
+
 ## 9. API
 
 REST, Richardson nível 3 (HAL). Prefixo público `https://localhost/api/`. OpenAPI gerada no Spring. Erros RFC 7807. Paginação e filtros nas listas.
@@ -256,6 +278,8 @@ REST, Richardson nível 3 (HAL). Prefixo público `https://localhost/api/`. Open
 Transições como sub-recursos, com rels: `self`, `aceitar`, `recusar`, `iniciar-preparo`, `marcar-pronto`, `alocar`, `sair-para-entrega`, `confirmar-entrega`, `cancelar`. A UI só oferece o que veio em `_links`.
 
 ---
+
+
 
 ## 10. Sessão e senha
 
@@ -268,6 +292,8 @@ Browser → HTTPS Fastify (cookies + CSRF)
 Senha: Argon2id no Spring. Access curto; refresh com rotação (reuse revoga a família). Logout invalida o `jti`; logout global incrementa `sessionVersion`.
 
 ---
+
+
 
 ## 11. Stack
 
@@ -287,6 +313,8 @@ Senha: Argon2id no Spring. Access curto; refresh com rotação (reuse revoga a f
 
 
 ---
+
+
 
 ## 12. Entrega do MVP
 
