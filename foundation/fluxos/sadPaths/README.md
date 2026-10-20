@@ -2,6 +2,8 @@
 
 Problemas, erros e exceções · como o sistema reage.
 
+O número segue a mesma história do happy path: cardápio, carrinho, pagamento, endereço, cancelamento, loja e entrega. A palavra depois do número é o tema. Quando existe um happy path do mesmo assunto, a palavra se repete (`item`, `cancela`, `disputa`, `frete`, `endereco`).
+
 | Gravidade | Significado |
 |-----------|-------------|
 | 🟡 Leve | Inconveniente, resolve rápido |
@@ -10,66 +12,81 @@ Problemas, erros e exceções · como o sistema reage.
 
 | ID | Fluxo | Gravidade | Perfis |
 |----|-------|-----------|--------|
-| [FLUX-SAD-1](FLUX-SAD-1.md) | Item indisponível no cardápio | 🟡 | 👤 |
-| [FLUX-SAD-2](FLUX-SAD-2.md) | Item do carrinho fica indisponível antes do checkout | 🟠 | 👤 🔑 |
-| [FLUX-SAD-3](FLUX-SAD-3.md) | Item pausado no checkout — servidor recusa | 🔴 | 👤 🔑 |
-| [FLUX-SAD-4](FLUX-SAD-4.md) | Cliente tenta cancelar após preparo iniciado | 🟠 | 👤 |
-| [FLUX-SAD-5](FLUX-SAD-5.md) | Cliente tenta cancelar após motoboy sair | 🔴 | 👤 🛵 |
-| [FLUX-SAD-6](FLUX-SAD-6.md) | Cozinha recusa o pedido | 🔴 | 👤 👨‍🍳 |
-| [FLUX-SAD-7](FLUX-SAD-7.md) | Pagamento falha no checkout | 🔴 | 👤 |
-| [FLUX-SAD-8](FLUX-SAD-8.md) | Dois motoboys — um perde a corrida | 🟠 | 🛵 🛵 |
-| [FLUX-SAD-9](FLUX-SAD-9.md) | Motoboy desiste de pedido assumido | 🟠 | 🛵 👨‍🍳 |
-| [FLUX-SAD-10](FLUX-SAD-10.md) | Cliente fecha app no meio do checkout | 🟡 | 👤 |
-| [FLUX-SAD-11](FLUX-SAD-11.md) | Cliente sai do app com itens no carrinho | 🟡 | 👤 |
-| [FLUX-SAD-12](FLUX-SAD-12.md) | Cliente sem endereço tenta finalizar | 🟡 | 👤 |
-| [FLUX-SAD-13](FLUX-SAD-13.md) | CEP fora da zona de entrega | 🟠 | 👤 |
-| [FLUX-SAD-14](FLUX-SAD-14.md) | Gerente cancela pedido já aceito | 🔴 | 🔑 👤 |
-| [FLUX-SAD-15](FLUX-SAD-15.md) | Gerente desaloca motoboy em trânsito | 🔴 | 🔑 🛵 👤 |
-| [FLUX-SAD-16](FLUX-SAD-16.md) | Nenhum motoboy ativo para assumir | 🔴 | 👨‍🍳 🔑 |
-| [FLUX-SAD-17](FLUX-SAD-17.md) | Cliente tenta acessar pedido alheio | 🔴 | 👤 |
-| [FLUX-SAD-18](FLUX-SAD-18.md) | Motoboy tenta pedido de outra loja | 🟠 | 🛵 |
+| [FLUX-SAD-01-item-cinza](FLUX-SAD-01-item-cinza.md) | Item indisponível no cardápio — fica cinza | 🟡 | 👤 |
+| [FLUX-SAD-02-item-carrinho](FLUX-SAD-02-item-carrinho.md) | Item do carrinho fica indisponível antes do checkout | 🟠 | 👤 🔑 |
+| [FLUX-SAD-03-item-checkout](FLUX-SAD-03-item-checkout.md) | Item pausado no checkout — servidor recusa | 🔴 | 👤 🔑 |
+| [FLUX-SAD-04-carrinho-sessao](FLUX-SAD-04-carrinho-sessao.md) | Cliente sai do app com itens no carrinho | 🟡 | 👤 |
+| [FLUX-SAD-05-checkout-fecha](FLUX-SAD-05-checkout-fecha.md) | Cliente fecha app no meio do checkout | 🟡 | 👤 |
+| [FLUX-SAD-06-pagamento](FLUX-SAD-06-pagamento.md) | Pagamento falha no checkout | 🔴 | 👤 |
+| [FLUX-SAD-07-endereco-vazio](FLUX-SAD-07-endereco-vazio.md) | Cliente sem endereço tenta finalizar | 🟡 | 👤 |
+| [FLUX-SAD-08-frete-fora](FLUX-SAD-08-frete-fora.md) | CEP fora da zona de entrega | 🟠 | 👤 |
+| [FLUX-SAD-09-cancela-tarde](FLUX-SAD-09-cancela-tarde.md) | Cliente tenta cancelar após preparo iniciado | 🟠 | 👤 |
+| [FLUX-SAD-10-cancela-saiu](FLUX-SAD-10-cancela-saiu.md) | Cliente tenta cancelar após motoboy sair | 🔴 | 👤 🛵 |
+| [FLUX-SAD-11-cancela-loja](FLUX-SAD-11-cancela-loja.md) | Gerente cancela um pedido específico | 🔴 | 🔑 👤 |
+| [FLUX-SAD-12-cozinha-fila](FLUX-SAD-12-cozinha-fila.md) | Cozinha demora a aceitar o pedido | 🟠 | 👨‍🍳 🔑 👤 |
+| [FLUX-SAD-13-loja-emergencia](FLUX-SAD-13-loja-emergencia.md) | Gerente fecha a loja em emergência (fechamento antecipado) | 🔴 | 🔑 👤 👨‍🍳 |
+| [FLUX-SAD-14-loja-fechada](FLUX-SAD-14-loja-fechada.md) | Loja fechada — banner, visual cinza e countdown | 🟠 | 👤 |
+| [FLUX-SAD-15-disputa](FLUX-SAD-15-disputa.md) | Dois motoboys — um perde a corrida | 🟠 | 🛵 🛵 |
+| [FLUX-SAD-16-entrega-desiste](FLUX-SAD-16-entrega-desiste.md) | Motoboy desiste de pedido assumido antes de sair da loja | 🟠 | 🛵 👤 🔑 |
+| [FLUX-SAD-17-entrega-prazo](FLUX-SAD-17-entrega-prazo.md) | Motoboy assume e não retira no prazo | 🟠 | 🛵 👤 |
+| [FLUX-SAD-18-rota-gerente](FLUX-SAD-18-rota-gerente.md) | Gerente desaloca motoboy incapacitado em trânsito (pedido refeito) | 🔴 | 🔑 🛵 👤 👨‍🍳 |
+| [FLUX-SAD-19-rota-motoboy](FLUX-SAD-19-rota-motoboy.md) | Motoboy cancela entrega em trânsito (auto-cancelamento) | 🔴 | 🛵 👤 👨‍🍳 🔑 |
+| [FLUX-SAD-20-sem-motoboy](FLUX-SAD-20-sem-motoboy.md) | Nenhum motoboy ativo para assumir | 🔴 | 👨‍🍳 🔑 |
+| [FLUX-SAD-21-aviso-cliente](FLUX-SAD-21-aviso-cliente.md) | Cliente notificado de imprevisto — ícone de alerta e Fale Conosco via WhatsApp | 🟠 | 👤 |
+| [FLUX-SAD-22-acesso-pedido](FLUX-SAD-22-acesso-pedido.md) | Cliente tenta acessar pedido alheio | 🔴 | 👤 |
+| [FLUX-SAD-23-acesso-loja](FLUX-SAD-23-acesso-loja.md) | Motoboy tenta pedido de outra loja | 🟠 | 🛵 |
 
 ---
 
 ## Resumo dos Cenários por Perfil
 
 ### 👤 Cliente
+
 | ID | Situação |
 |----|---------|
-| FLUX-SAD-1 | Item some do cardápio — nem vê |
-| FLUX-SAD-2 | Item do carrinho pausado — aviso e remoção |
-| FLUX-SAD-3 | Checkout recusado por item pausado no servidor |
-| FLUX-SAD-4 | Não consegue cancelar (preparo iniciado) |
-| FLUX-SAD-5 | Não consegue cancelar (motoboy saiu) |
-| FLUX-SAD-7 | Pagamento falha — nada cobrado |
-| FLUX-SAD-10 | Fechou app no checkout — nada criado |
-| FLUX-SAD-11 | Carrinho salvo se sessão ativa; perdido no logout |
-| FLUX-SAD-12 | Sem endereço — sistema pede antes de finalizar |
-| FLUX-SAD-13 | CEP fora da zona — pedido bloqueado |
-| FLUX-SAD-17 | Acesso negado a pedido alheio |
+| FLUX-SAD-01-item-cinza | Item fica cinza no cardápio — não consegue pedir |
+| FLUX-SAD-02-item-carrinho | Item do carrinho pausado — aviso e remoção |
+| FLUX-SAD-03-item-checkout | Checkout recusado por item pausado no servidor |
+| FLUX-SAD-04-carrinho-sessao | Carrinho salvo se sessão ativa; perdido no logout |
+| FLUX-SAD-05-checkout-fecha | Fechou app no checkout — nada criado |
+| FLUX-SAD-06-pagamento | Pagamento falha — nada cobrado |
+| FLUX-SAD-07-endereco-vazio | Sem endereço — sistema pede antes de finalizar |
+| FLUX-SAD-08-frete-fora | CEP fora da zona — pedido bloqueado |
+| FLUX-SAD-09-cancela-tarde | Não consegue cancelar (preparo iniciado) |
+| FLUX-SAD-10-cancela-saiu | Não consegue cancelar (motoboy saiu) |
+| FLUX-SAD-14-loja-fechada | Loja fechada — carrinho bloqueado, visual cinza e countdown |
+| FLUX-SAD-21-aviso-cliente | Recebe ícone ❗ de alerta e acessa Fale Conosco |
+| FLUX-SAD-22-acesso-pedido | Acesso negado a pedido alheio |
 
 ### 👨‍🍳 Cozinha
+
 | ID | Situação |
 |----|---------|
-| FLUX-SAD-6 | Recusa o pedido — cliente estornado |
-| FLUX-SAD-16 | Pedido pronto mas sem motoboy disponível |
+| FLUX-SAD-12-cozinha-fila | Demora a aceitar — pedido permanece na fila, sem recusa |
+| FLUX-SAD-13-loja-emergencia | Alerta gerente para fechar a loja — pedidos em andamento continuam |
+| FLUX-SAD-20-sem-motoboy | Pedido pronto mas sem motoboy disponível |
 
 ### 🛵 Motoboy
+
 | ID | Situação |
 |----|---------|
-| FLUX-SAD-8 | Perde a corrida para outro motoboy |
-| FLUX-SAD-9 | Desiste de pedido assumido — volta à fila |
-| FLUX-SAD-15 | Desalocado pelo gerente |
-| FLUX-SAD-18 | Tenta pedido de outra loja — bloqueado |
+| FLUX-SAD-15-disputa | Perde a corrida para outro motoboy |
+| FLUX-SAD-16-entrega-desiste | Desiste antes de sair da loja — lanche permanece na loja, próximo motoboy assume |
+| FLUX-SAD-17-entrega-prazo | Não retira no prazo — pedido volta a PRONTO |
+| FLUX-SAD-18-rota-gerente | Desalocado pelo gerente por incapacitação — pedido refeito |
+| FLUX-SAD-19-rota-motoboy | Cancela entrega em trânsito (auto-cancelamento) |
+| FLUX-SAD-23-acesso-loja | Tenta pedido de outra loja — bloqueado |
 
 ### 🔑 Gerente
+
 | ID | Situação |
 |----|---------|
-| FLUX-SAD-6 | Cozinha (ou gerente) recusa pedido com estorno |
-| FLUX-SAD-14 | Cancela pedido em andamento com estorno |
-| FLUX-SAD-15 | Desaloca motoboy em trânsito |
-| FLUX-SAD-16 | Gerencia ausência de motoboy disponível |
+| FLUX-SAD-11-cancela-loja | Cancela um pedido específico, com estorno — não é o fechamento da loja |
+| FLUX-SAD-13-loja-emergencia | Fecha a loja em emergência com motivo — novos pedidos bloqueados |
+| FLUX-SAD-18-rota-gerente | Desaloca motoboy incapacitado — aciona protocolo de refazimento |
+| FLUX-SAD-20-sem-motoboy | Gerencia ausência de motoboy disponível |
+| FLUX-SAD-21-aviso-cliente | Cliente notificado de imprevisto — ícone ❗ e Fale Conosco (WhatsApp externo) |
 
 ---
 
-[Fluxos felizes](../happypath/README.md)
+[Fluxos felizes](../happypaths/README.md)
