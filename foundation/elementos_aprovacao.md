@@ -7,7 +7,7 @@ Visão geral. O que falta aqui vira argumento de reprovação ou de “CRUD com 
 ## Stack
 
 - Kotlin + Spring Boot + JPA (backend)
-- Frontend SPA: React ou Angular por superfície (não misturar as duas na mesma app). Angular em backoffice/gestão; React em cliente de jogo ou fluxo mais interativo
+- Frontend: Angular (`web-operacao`) para cozinha e gerente (backoffice web); Android nativo Kotlin + Jetpack para cliente (`app-cliente`) e motoboy (`app-motoboy`). Não misturar plataformas por perfil
 - Fastify como API gateway / BFF
 - Redis (sessão, denylist, logout forçado)
 - PostgreSQL (modelo relacional normalizado)
@@ -23,7 +23,7 @@ Visão geral. O que falta aqui vira argumento de reprovação ou de “CRUD com 
 - Senhas com Argon2id (nunca bcrypt/SHA; hash só no Spring)
 - Mais de um perfil (RBAC)
 - FGAC (autorização por recurso/atributo, não só por role)
-- JWT em par: access + refresh, ambos em cookies HttpOnly + `Secure` + `SameSite`
+- JWT em par: access + refresh. **Web Angular**: ambos em cookies `HttpOnly + Secure + SameSite=Strict`. **Mobile Android**: retornados em JSON e guardados em `EncryptedSharedPreferences`; enviados via `Authorization: Bearer` header
 - Refresh com rotação
 - Redis para denylist / versão de sessão / logout forçado (inclusive “deslogar todos os dispositivos”)
 - CSRF consciente do modelo cookie-to-cookie via gateway
@@ -74,9 +74,9 @@ Visão geral. O que falta aqui vira argumento de reprovação ou de “CRUD com 
 
 ---
 
-## IHC (React ou Angular)
+## IHC (Angular web + Android Kotlin)
 
-- Mesmos requisitos de IHC independente da SPA escolhida
+- Mesmos requisitos de IHC independente da plataforma escolhida
 - Fluxos por persona/perfil (menu e ações mudam com FGAC)
 - Navegação dirigida pelos links da API (UI não inventa transição ilegal)
 - Estados vazios, erro e loading
@@ -88,7 +88,7 @@ Visão geral. O que falta aqui vira argumento de reprovação ou de “CRUD com 
 ## Qualidade mínima de entrega
 
 - Testes das transações críticas (serviço + concorrência)
-- Docker Compose: Spring + PostgreSQL + Redis + Fastify + SPA (React ou Angular)
+- Docker Compose: Spring Kotlin + PostgreSQL + Redis + Fastify + `web-operacao` Angular (apps Android rodam localmente no emulador / dispositivo)
 - Logs com correlação no fluxo gateway → backend
 - README de subida local e recorte de escopo (o que está fora)
 
@@ -107,4 +107,4 @@ Visão geral. O que falta aqui vira argumento de reprovação ou de “CRUD com 
 - Catálogo de requests e responses JSON esperados (front ↔ back, inclusive erros e links HATEOAS)
 - Protótipo/fluxo de telas
 - Script SQL de criação do banco + Flyway com seed
-- Decisões explícitas: HTTPS, Argon2id, cookies, Redis, monólito, Richardson 3, React vs Angular por superfície
+- Decisões explícitas: HTTPS, Argon2id, cookies HttpOnly (web) vs Bearer header + EncryptedSharedPreferences (Android), Redis, monólito, Richardson 3, Angular web (operação interna) vs Android Kotlin nativo (cliente e motoboy)

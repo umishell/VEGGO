@@ -14,26 +14,49 @@ Não há tabela de agregação separada no MVP. Todas as métricas são derivada
 
 ---
 
+## 1.1 Dia operacional (painel do dia e “hoje”)
+
+**Definição única:** pedidos cujo `created_at`, convertido para o fuso `stores.timezone`, cai na **data civil de hoje** nesse mesmo fuso.
+
+| Situação | Entra no painel / resumo “hoje”? |
+|----------|----------------------------------|
+| Pedido antes de uma pausa `FECHADA_PROGRAMADA` e depois da reabertura **no mesmo dia civil** | Sim — mesma lista |
+| Loja reabre após pausa programada | A lista **não** é apagada (não é “desde a última abertura”) |
+| Meia-noite no fuso da loja | Novo dia operacional; painel e totais “hoje” passam a outra data |
+| Pedido criado ontem ainda em preparo hoje | Continua visível no painel **de ontem**; no painel **de hoje** só entram pedidos com `created_at` na data de hoje |
+
+Parâmetro REST `date=today` significa exatamente essa data civil no `timezone` da loja. Histórico por período (`FLUX-HAPPY-19-stats`) agrupa por `DATE(created_at AT TIME ZONE timezone)`, não por turno de abertura.
+
+Expressão reutilizável ( `:storeTz` = `stores.timezone` ):
+
+```sql
+(created_at AT TIME ZONE :storeTz)::date = (CURRENT_TIMESTAMP AT TIME ZONE :storeTz)::date
+```
+
+---
+
 ## 2. Queries por tela
 
 ### Tela 1 — Resumo do dia (atualização em tempo real)
 
-Os totais do dia são recomputados a cada evento de estado recebido pelo servidor, ou solicitados por REST no carregamento. Não são armazenados em cache no MVP.
+Os totais do dia são recomputados a cada evento de estado recebido pelo servidor, ou solicitados por REST no carregamento. Não são armazenados em cache no MVP. Usam o **dia operacional** (§ 1.1).
 
 ```sql
--- Pedidos do dia por estado
+-- Pedidos do dia operacional por estado
 SELECT status, COUNT(*) AS qty
   FROM orders
  WHERE store_id = :storeId
-   AND created_at::date = CURRENT_DATE
+   AND (created_at AT TIME ZONE :storeTz)::date
+       = (CURRENT_TIMESTAMP AT TIME ZONE :storeTz)::date
  GROUP BY status;
 
--- Faturamento do dia (apenas entregues)
+-- Faturamento do dia operacional (apenas entregues)
 SELECT COALESCE(SUM(total_amount), 0) AS revenue
   FROM orders
  WHERE store_id = :storeId
    AND status = 'ENTREGUE'
-   AND created_at::date = CURRENT_DATE;
+   AND (created_at AT TIME ZONE :storeTz)::date
+       = (CURRENT_TIMESTAMP AT TIME ZONE :storeTz)::date;
 ```
 
 ---
@@ -41,17 +64,48 @@ SELECT COALESCE(SUM(total_amount), 0) AS revenue
 ### Tela 2 — Histórico por período
 
 ```sql
--- Volume e faturamento agrupado por dia
-SELECT DATE(created_at) AS day,
+-- Volume e faturamento agrupado por dia (com fuso da loja — alinhado ao §1.1)
+SELECT (created_at AT TIME ZONE :storeTz)::date AS day,
        COUNT(*) AS total_orders,
        COUNT(*) FILTER (WHERE status = 'ENTREGUE') AS delivered,
        COUNT(*) FILTER (WHERE status = 'CANCELADO') AS cancelled,
-       SUM(total_amount) FILTER (WHERE status = 'ENTREGUE') AS revenue
+       COALESCE(SUM(total_amount) FILTER (WHERE status = 'ENTREGUE'), 0) AS revenue,
+       ROUND(
+         100.0 * COUNT(*) FILTER (WHERE status = 'CANCELADO') / NULLIF(COUNT(*), 0),
+         1
+       ) AS cancellation_rate_pct
   FROM orders
  WHERE store_id = :storeId
-   AND created_at BETWEEN :start AND :end
- GROUP BY day
+   AND (created_at AT TIME ZONE :storeTz)::date BETWEEN :startDate AND :endDate
+ GROUP BY (created_at AT TIME ZONE :storeTz)::date
  ORDER BY day;
+-- :startDate e :endDate são datas civis (DATE) já convertidas pelo chamador para o fuso da loja
+-- :storeTz = stores.timezone (ex: 'America/Sao_Paulo')
+```
+
+> ⚠️ **Correção de fuso aplicada:** a versão anterior usava `DATE(created_at)` sem fuso, o que podia classificar pedidos no dia errado para lojas em fuso UTC-3. Agora todos os agrupamentos por dia usam `(created_at AT TIME ZONE :storeTz)::date`, igual ao §1.1.
+
+```sql
+-- Novos clientes no período (primeira compra dentro do intervalo)
+SELECT COUNT(*) AS new_clients
+  FROM (
+    SELECT client_id
+      FROM orders
+     WHERE store_id = :storeId
+     GROUP BY client_id
+    HAVING MIN((created_at AT TIME ZONE :storeTz)::date) BETWEEN :startDate AND :endDate
+  ) first_orders;
+
+-- Clientes recorrentes (mais de 1 pedido no período)
+SELECT COUNT(*) AS returning_clients
+  FROM (
+    SELECT client_id
+      FROM orders
+     WHERE store_id = :storeId
+       AND (created_at AT TIME ZONE :storeTz)::date BETWEEN :startDate AND :endDate
+     GROUP BY client_id
+    HAVING COUNT(*) > 1
+  ) recurring;
 ```
 
 ---
@@ -103,13 +157,54 @@ SELECT client_id,
 ### Tela 5 — Operação
 
 ```sql
--- Tempo médio cozinha: RECEBIDO → PRONTO
-SELECT AVG(EXTRACT(EPOCH FROM (e_pronto.occurred_at - e_recebido.occurred_at)) / 60) AS avg_kitchen_minutes
-  FROM order_events e_recebido
-  JOIN order_events e_pronto ON e_pronto.order_id = e_recebido.order_id
- WHERE e_recebido.new_status = 'RECEBIDO'
+-- Tempo médio cozinha: EM_PREPARO → PRONTO (exclui refazimentos; usa remake_seq=0 para ciclo principal)
+-- Nota: filtra por occurred_at no dia operacional alvo
+SELECT AVG(EXTRACT(EPOCH FROM (e_pronto.occurred_at - e_preparo.occurred_at)) / 60) AS avg_kitchen_minutes
+  FROM order_events e_preparo
+  JOIN order_events e_pronto ON e_pronto.order_id = e_preparo.order_id
+  JOIN orders o ON o.id = e_preparo.order_id
+ WHERE e_preparo.new_status = 'EM_PREPARO'
    AND e_pronto.new_status = 'PRONTO'
-   AND e_recebido.occurred_at::date = CURRENT_DATE;
+   AND o.store_id = :storeId
+   AND (e_preparo.occurred_at AT TIME ZONE :storeTz)::date BETWEEN :startDate AND :endDate;
+
+-- Tempo médio de entrega: SAIU_PARA_ENTREGA → ENTREGUE
+SELECT AVG(EXTRACT(EPOCH FROM (e_entregue.occurred_at - e_saiu.occurred_at)) / 60) AS avg_delivery_minutes
+  FROM order_events e_saiu
+  JOIN order_events e_entregue ON e_entregue.order_id = e_saiu.order_id
+  JOIN orders o ON o.id = e_saiu.order_id
+ WHERE e_saiu.new_status = 'SAIU_PARA_ENTREGA'
+   AND e_entregue.new_status = 'ENTREGUE'
+   AND o.store_id = :storeId
+   AND (e_saiu.occurred_at AT TIME ZONE :storeTz)::date BETWEEN :startDate AND :endDate;
+
+-- Pedidos por motoboy no período
+SELECT e_saiu.changed_by_id AS motoboy_id,
+       u.name AS motoboy_name,
+       COUNT(*) AS deliveries_count,
+       COUNT(*) FILTER (WHERE EXISTS (
+         SELECT 1 FROM order_events ie
+          WHERE ie.order_id = e_saiu.order_id
+            AND ie.reason LIKE 'IMPREVISTO%'
+       )) AS incidents_count
+  FROM order_events e_saiu
+  JOIN users u ON u.id = e_saiu.changed_by_id
+  JOIN orders o ON o.id = e_saiu.order_id
+ WHERE e_saiu.new_status = 'SAIU_PARA_ENTREGA'
+   AND o.store_id = :storeId
+   AND (e_saiu.occurred_at AT TIME ZONE :storeTz)::date BETWEEN :startDate AND :endDate
+ GROUP BY e_saiu.changed_by_id, u.name
+ ORDER BY deliveries_count DESC;
+
+-- Tempo médio aguardando motoboy: PRONTO → SAIU_PARA_ENTREGA
+SELECT AVG(EXTRACT(EPOCH FROM (e_saiu.occurred_at - e_pronto.occurred_at)) / 60) AS avg_wait_motoboy_minutes
+  FROM order_events e_pronto
+  JOIN order_events e_saiu ON e_saiu.order_id = e_pronto.order_id
+  JOIN orders o ON o.id = e_pronto.order_id
+ WHERE e_pronto.new_status = 'PRONTO'
+   AND e_saiu.new_status = 'SAIU_PARA_ENTREGA'
+   AND o.store_id = :storeId
+   AND (e_pronto.occurred_at AT TIME ZONE :storeTz)::date BETWEEN :startDate AND :endDate;
 ```
 
 ---
@@ -124,10 +219,13 @@ O gerente recebe os mesmos eventos WebSocket da cozinha e do motoboy, pelo canal
 | Remove o card ao aceitar | Mantém o card, muda cor |
 | Sem filtro | Filtros de estado, motoboy, valor, período |
 
-A listagem inicial do dia vem de:
+A listagem inicial traz **todos os pedidos do dia operacional atual** (§ 1.1), ordenados por `created_at` desc. Reabrir após `FECHADA_PROGRAMADA` no mesmo dia **não** muda o recorte — só meia-noite local troca o conjunto.
+
 ```
 GET /orders?storeId={id}&date=today&page=1&size=50
 ```
+
+`date=today` resolve para a data civil em `stores.timezone`, com o mesmo predicado SQL da § 1.1.
 
 ---
 

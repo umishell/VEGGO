@@ -1,7 +1,7 @@
 # ORD-01 — Máquina de Estados do Pedido
 
 **Referenciado por:**  
-→ [FLUX-SAD-09-cancela-tarde](../fluxos/sadPaths/FLUX-SAD-09-cancela-tarde.md) · [FLUX-SAD-16-entrega-desiste](../fluxos/sadPaths/FLUX-SAD-16-entrega-desiste.md) · [FLUX-SAD-11-cancela-loja](../fluxos/sadPaths/FLUX-SAD-11-cancela-loja.md) · [FLUX-SAD-18-rota-gerente](../fluxos/sadPaths/FLUX-SAD-18-rota-gerente.md) · [FLUX-SAD-19-rota-motoboy](../fluxos/sadPaths/FLUX-SAD-19-rota-motoboy.md) · [FLUX-SAD-17-entrega-prazo](../fluxos/sadPaths/FLUX-SAD-17-entrega-prazo.md) · [FLUX-HAPPY-07-cancela](../fluxos/happypaths/FLUX-HAPPY-07-cancela.md)
+→ [FLUX-SAD-09-cancela-tarde](../fluxos/sadPaths/FLUX-SAD-09-cancela-tarde.md) · [FLUX-SAD-11-cancela-loja](../fluxos/sadPaths/FLUX-SAD-11-cancela-loja.md) · [FLUX-SAD-18-rota-gerente](../fluxos/sadPaths/FLUX-SAD-18-rota-gerente.md) · [FLUX-SAD-19-rota-motoboy](../fluxos/sadPaths/FLUX-SAD-19-rota-motoboy.md) · [FLUX-HAPPY-07-cancela](../fluxos/happypaths/FLUX-HAPPY-07-cancela.md)
 
 *[← Índice docTecnica](README.md)*
 
@@ -15,13 +15,14 @@ Alinhado a [`pitch_delivery.md`](../pitch_delivery.md). O nome do estado inicial
 |--------|-----------|-----------------|
 | `RECEBIDO` | Pedido criado e pago. Já está na fila da cozinha. Ninguém aceitou ainda | Sistema, no checkout |
 | `EM_PREPARO` | Cozinha aceitou o pedido da fila. O preparo começa nesse clique | 👨‍🍳 Cozinha ou 🔑 Gerente |
-| `PRONTO` | Embalado, sem motoboy | 👨‍🍳 Cozinha ou 🔑 Gerente |
-| `ALOCADO` | Motoboy assumiu e ainda não saiu. Lanche está na loja | 🛵 Motoboy |
-| `SAIU_PARA_ENTREGA` | Motoboy saiu com o pedido | 🛵 Motoboy |
+| `PRONTO` | Embalado, aguardando motoboy | 👨‍🍳 Cozinha ou 🔑 Gerente |
+| `SAIU_PARA_ENTREGA` | Motoboy assumiu e saiu com o pedido (transição única) | 🛵 Motoboy |
 | `ENTREGUE` | Entrega confirmada | 🛵 Motoboy |
 | `CANCELADO` | Encerrado com estorno, se o pagamento estava confirmado | 👤 Cliente ou 🔑 Gerente, conforme a janela |
 
 Não existe `RECUSADO`, `PENDENTE` nem `ACEITO`. Aceitar o pedido da fila é a transição `RECEBIDO → EM_PREPARO`.
+
+> **Pré-condição para "Assumir e sair":** o motoboy precisa ter turno ativo (`delivery_persons.status = DISPONIVEL`), representado por `motoboyAtivo = true` no JWT. Turno não iniciado (`INATIVO`) bloqueia a ação no servidor. Ver [FLUX-HAPPY-16-turno](../fluxos/happypaths/FLUX-HAPPY-16-turno.md).
 
 ---
 
@@ -32,11 +33,10 @@ Não existe `RECUSADO`, `PENDENTE` nem `ACEITO`. Aceitar o pedido da fila é a t
 | `RECEBIDO` | Sim. O pedido sai da fila da cozinha | Sim, com estorno |
 | `EM_PREPARO` | Não | Sim, com estorno. Exceção de um pedido, não o fechamento da loja |
 | `PRONTO` sem motoboy | Não | Sim, com estorno |
-| `ALOCADO` | Não | Desalocar volta para `PRONTO`. Não cancela e não estorna |
-| `SAIU_PARA_ENTREGA` | Não | Imprevisto: volta para `RECEBIDO`. Não estorna |
+| `SAIU_PARA_ENTREGA` | Não | Acionar imprevisto: volta a `RECEBIDO` com prioridade. Não estorna |
 | `ENTREGUE` | Não | Não |
 
-`cancelamento_bloqueado = true` impede o cliente de cancelar mesmo em `RECEBIDO`. O imprevisto em rota liga essa flag até `ENTREGUE`.
+`cancelamento_bloqueado = true` impede **somente o cliente** de cancelar em `RECEBIDO`. O **gerente não é bloqueado** por este campo — pode cancelar o pedido com estorno a qualquer momento, mesmo após imprevisto em rota, se não houver como refazer o pedido.
 
 O fechamento da loja (`FLUX-SAD-13-loja-emergencia`) não percorre estas transições. Pedido já criado continua.
 
@@ -52,12 +52,9 @@ EM_PREPARO ── gerente cancela ─► CANCELADO + estorno
    │
    ▼
 PRONTO ── gerente cancela (sem motoboy) ─► CANCELADO + estorno
-   │ motoboy assume
+   │ motoboy assume e sai (transição única)
    ▼
-ALOCADO ── desiste, gerente desaloca ou timeout ─► PRONTO
-   │ retira
-   ▼
-SAIU_PARA_ENTREGA ── imprevisto ─► RECEBIDO (mesmo id, cancelamento bloqueado)
+SAIU_PARA_ENTREGA ── imprevisto ─► RECEBIDO (mesmo id, priority, cancelamento bloqueado)
    │ entrega
    ▼
 ENTREGUE
@@ -73,17 +70,29 @@ Um único `order_id` para o cliente. A auditoria grava o motivo `IMPREVISTO_ENTR
 |-------|----------------------|
 | `status` | `RECEBIDO` |
 | `motoboy_id` | `null` |
-| `incident_alert` | `true` até `ENTREGUE` |
-| `cancelamento_bloqueado` | `true` até `ENTREGUE` |
+| `priority` | `true` — pedido vai ao topo da fila do KDS |
+| `incident_alert` | `true` — marca o pedido como tendo tido imprevisto; exibe aviso na timeline do cliente |
+| `incident_message` | mensagem do gerente para o cliente (gravada no pedido; exibida via WebSocket) |
+| `cancelamento_bloqueado` | `true` até `ENTREGUE` — cliente não pode cancelar |
 | `remake_seq` | incrementa |
 | `payment_status` | permanece `CONFIRMADO` |
 
+**Status do motoboy após imprevisto confirmado:** o motoboy envolvido retorna automaticamente a `DISPONIVEL` (turno continua ativo; ele pode assumir outros pedidos). O sistema grava `INCIDENT_CONFIRMED` em `order_events` com o `motoboy_id` antes de zerálo no pedido.
+
+**Prioridade no KDS:** pedido com `priority = true` aparece no topo da fila `RECEBIDO`. A cozinha vê o indicador ⚡. Pedidos já em `EM_PREPARO` não são interrompidos — o pedido prioritário aguarda sua vez para ser aceito normalmente pelo próximo cozinheiro livre.
+
 O KDS lista os itens desse `remake_seq` sem nome, telefone ou endereço do cliente. O endereço segue no pedido para o próximo motoboy.
 
-| Item | Regra |
-|------|-------|
-| Lanche que estava na rota | Descartado. A auditoria registra perda operacional. Não há tela de estoque |
-| Bebida | Pendência de devolução do motoboy (`order_id`, `motoboy_id`, `pending`). Sem módulo de estoque |
+**Regra de destino dos itens após imprevisto em rota:**
+
+A classificação usa `products.item_type` (definido pelo gerente no cadastro do produto):
+
+| `item_type` | Exemplos | Destino | Como o gerente acompanha |
+|-------------|----------|---------|--------------------------|
+| `PREPARED_FOOD` | Lanche, batata, sobremesa | **Descartados** — fora da loja, não retornam. Auditoria registra `ITEM_DISCARDED` por `order_id + remake_seq` | Detalhe do pedido no painel — linha por item com status `DISCARDED` |
+| `SEALED_BEVERAGE` | Lata, garrafa | **Pendência de devolução** — `order_events` registra `BEVERAGE_RETURN_PENDING` com `order_id`, `motoboy_id` e lista de itens pendentes | Detalhe do pedido no painel — badge "Devolução pendente". Quando o motoboy devolve pessoalmente, o gerente clica **Devolução recebida** gravando `BEVERAGE_RETURN_CONFIRMED` |
+
+O gerente **não precisa de tela separada**: o detalhe do pedido (acessível pelo painel do dia, `FLUX-HAPPY-18-painel`) mostra os itens com seus status e o botão de confirmar devolução quando houver pendência. Não há módulo de estoque — é apenas registro de auditoria.
 
 Quando o mesmo pedido chega a `ENTREGUE`, `incident_alert` volta a `false`.
 
@@ -94,9 +103,8 @@ Quando o mesmo pedido chega a `ENTREGUE`, `incident_alert` volta a `false`.
 | Situação | Efeito |
 |----------|--------|
 | Cozinha não tira o pedido da fila | Permanece `RECEBIDO`. Depois de `accept_alert_minutes` o gerente recebe alerta |
-| Motoboy não retira em `ALOCADO` | Depois de `allocation_timeout_minutes` o pedido volta a `PRONTO` e o lanche continua na loja |
 
-Os dois prazos ficam na tabela `stores`.
+O prazo `accept_alert_minutes` fica na tabela `stores`. Não existe timeout que cancele o pedido automaticamente — apenas alerta.
 
 ---
 

@@ -22,7 +22,7 @@ Cliente tenta finalizar → sistema pede endereço → cliente cadastra
 | 1 | 👤 Cliente | Clica em **Finalizar Pedido** |
 | 2 | Sistema | Detecta que não há endereço de entrega cadastrado |
 | 3 | Sistema | Exibe formulário: **"Informe seu endereço de entrega"** |
-| 4 | 👤 Cliente | Preenche rua, número, bairro e CEP |
+| 4 | 👤 Cliente | Preenche rua, número, bairro e CEP (obrigatórios) + complemento e ponto de referência (opcionais, mas ajudam o motoboy a encontrar a casa) |
 | 5 | Sistema | Calcula o frete pela região e mostra o valor |
 | 6 | 👤 Cliente | Confirma e finaliza normalmente |
 | 7 | Sistema | **Salva o endereço automaticamente** no perfil do cliente |

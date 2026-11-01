@@ -15,8 +15,10 @@ A cozinha não recusa pedido que já entrou na fila. Se um ingrediente acabou, e
 
 ```
 Ingrediente acaba → cozinha pausa o dia ou bloqueia o item
-→ cliente vê cinza → pedido novo daquele item não entra
+→ cliente vê item cinza → pedido novo daquele item não entra
 ```
+
+> A cozinha **não tem** as ações Arquivar, Desarquivar ou Remover produto — essas são exclusivas do gerente. Arquivar oculta o item completamente das interfaces; pausar/bloquear apenas o torna cinza no cardápio do cliente. Ver [FLUX-HAPPY-10-item-gerente](FLUX-HAPPY-10-item-gerente.md).
 
 ---
 

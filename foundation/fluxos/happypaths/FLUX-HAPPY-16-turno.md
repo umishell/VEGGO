@@ -23,12 +23,14 @@ Fim do expediente → motoboy encerra turno → fica inativo
 | # | Quem | O que acontece |
 |---|------|----------------|
 | 1 | 🛵 Motoboy | No app, clica em **"Encerrar turno"** |
-| 2 | Sistema | Remove o motoboy da fila de disponíveis — status `INATIVO` |
+| 2 | Sistema | Verifica se o motoboy tem pedido em `SAIU_PARA_ENTREGA` |
+| 2a | *(sem entrega ativa)* | Remove da fila — status `INATIVO`. Continua no passo 3 |
+| 2b | *(com entrega ativa)* | **Bloqueia a ação.** Exibe: *"Você tem uma entrega em andamento. Finalize-a antes de encerrar o turno."* O botão permanece desabilitado |
 | 3 | Sistema | Novos pedidos não são mais exibidos para ele |
 | 4 | 🛵 Motoboy | Pode fechar o app e ir embora |
 | 5 | 🔑 Gerente | No painel, vê o motoboy como **inativo** na lista |
 
-> ⚠️ Se o motoboy tiver um pedido **em andamento**, deve finalizá-lo antes de encerrar o turno.
+> O sistema **bloqueia** o encerramento de turno quando há pedido em `SAIU_PARA_ENTREGA`. O motoboy precisa confirmar a entrega (ou o gerente aciona o protocolo de imprevisto) antes de sair.
 
 ---
 

@@ -27,12 +27,10 @@ O número segue a mesma história do happy path: cardápio, carrinho, pagamento,
 | [FLUX-SAD-13-loja-emergencia](FLUX-SAD-13-loja-emergencia.md) | Gerente fecha a loja em emergência (fechamento antecipado) | 🔴 | 🔑 👤 👨‍🍳 |
 | [FLUX-SAD-14-loja-fechada](FLUX-SAD-14-loja-fechada.md) | Loja fechada — banner, visual cinza e countdown | 🟠 | 👤 |
 | [FLUX-SAD-15-disputa](FLUX-SAD-15-disputa.md) | Dois motoboys — um perde a corrida | 🟠 | 🛵 🛵 |
-| [FLUX-SAD-16-entrega-desiste](FLUX-SAD-16-entrega-desiste.md) | Motoboy desiste de pedido assumido antes de sair da loja | 🟠 | 🛵 👤 🔑 |
-| [FLUX-SAD-17-entrega-prazo](FLUX-SAD-17-entrega-prazo.md) | Motoboy assume e não retira no prazo | 🟠 | 🛵 👤 |
-| [FLUX-SAD-18-rota-gerente](FLUX-SAD-18-rota-gerente.md) | Gerente desaloca motoboy incapacitado em trânsito (pedido refeito) | 🔴 | 🔑 🛵 👤 👨‍🍳 |
-| [FLUX-SAD-19-rota-motoboy](FLUX-SAD-19-rota-motoboy.md) | Motoboy cancela entrega em trânsito (auto-cancelamento) | 🔴 | 🛵 👤 👨‍🍳 🔑 |
+| [FLUX-SAD-18-rota-gerente](FLUX-SAD-18-rota-gerente.md) | Gerente aciona imprevisto em rota — pedido refaz com prioridade | 🔴 | 🔑 🛵 👤 👨‍🍳 |
+| [FLUX-SAD-19-rota-motoboy](FLUX-SAD-19-rota-motoboy.md) | Motoboy reporta imprevisto em rota — gerente confirma e aciona refazimento | 🔴 | 🛵 🔑 👤 👨‍🍳 |
 | [FLUX-SAD-20-sem-motoboy](FLUX-SAD-20-sem-motoboy.md) | Nenhum motoboy ativo para assumir | 🔴 | 👨‍🍳 🔑 |
-| [FLUX-SAD-21-aviso-cliente](FLUX-SAD-21-aviso-cliente.md) | Cliente notificado de imprevisto — ícone de alerta e Fale Conosco via WhatsApp | 🟠 | 👤 |
+| [FLUX-SAD-21-aviso-cliente](FLUX-SAD-21-aviso-cliente.md) | Cliente notificado de imprevisto — aviso na timeline e Fale Conosco | 🟠 | 👤 |
 | [FLUX-SAD-22-acesso-pedido](FLUX-SAD-22-acesso-pedido.md) | Cliente tenta acessar pedido alheio | 🔴 | 👤 |
 | [FLUX-SAD-23-acesso-loja](FLUX-SAD-23-acesso-loja.md) | Motoboy tenta pedido de outra loja | 🟠 | 🛵 |
 
@@ -55,7 +53,7 @@ O número segue a mesma história do happy path: cardápio, carrinho, pagamento,
 | FLUX-SAD-09-cancela-tarde | Não consegue cancelar (preparo iniciado) |
 | FLUX-SAD-10-cancela-saiu | Não consegue cancelar (motoboy saiu) |
 | FLUX-SAD-14-loja-fechada | Loja fechada — carrinho bloqueado, visual cinza e countdown |
-| FLUX-SAD-21-aviso-cliente | Recebe ícone ❗ de alerta e acessa Fale Conosco |
+| FLUX-SAD-21-aviso-cliente | Vê pedido voltar a RECEBIDO com ⚡ prioridade e mensagem do gerente |
 | FLUX-SAD-22-acesso-pedido | Acesso negado a pedido alheio |
 
 ### 👨‍🍳 Cozinha
@@ -70,11 +68,9 @@ O número segue a mesma história do happy path: cardápio, carrinho, pagamento,
 
 | ID | Situação |
 |----|---------|
-| FLUX-SAD-15-disputa | Perde a corrida para outro motoboy |
-| FLUX-SAD-16-entrega-desiste | Desiste antes de sair da loja — lanche permanece na loja, próximo motoboy assume |
-| FLUX-SAD-17-entrega-prazo | Não retira no prazo — pedido volta a PRONTO |
-| FLUX-SAD-18-rota-gerente | Desalocado pelo gerente por incapacitação — pedido refeito |
-| FLUX-SAD-19-rota-motoboy | Cancela entrega em trânsito (auto-cancelamento) |
+| FLUX-SAD-15-disputa | Perde a corrida para outro motoboy — o vencedor vai direto a `SAIU_PARA_ENTREGA` |
+| FLUX-SAD-18-rota-gerente | Gerente detecta imprevisto e aciona refazimento com prioridade |
+| FLUX-SAD-19-rota-motoboy | Reporta imprevisto pelo app — gerente confirma e aciona refazimento |
 | FLUX-SAD-23-acesso-loja | Tenta pedido de outra loja — bloqueado |
 
 ### 🔑 Gerente
@@ -83,9 +79,10 @@ O número segue a mesma história do happy path: cardápio, carrinho, pagamento,
 |----|---------|
 | FLUX-SAD-11-cancela-loja | Cancela um pedido específico, com estorno — não é o fechamento da loja |
 | FLUX-SAD-13-loja-emergencia | Fecha a loja em emergência com motivo — novos pedidos bloqueados |
-| FLUX-SAD-18-rota-gerente | Desaloca motoboy incapacitado — aciona protocolo de refazimento |
+| FLUX-SAD-18-rota-gerente | Aciona imprevisto em rota — pedido volta ao topo da fila com prioridade |
+| FLUX-SAD-19-rota-motoboy | Recebe alerta do motoboy, valida e aciona refazimento com prioridade |
 | FLUX-SAD-20-sem-motoboy | Gerencia ausência de motoboy disponível |
-| FLUX-SAD-21-aviso-cliente | Cliente notificado de imprevisto — ícone ❗ e Fale Conosco (WhatsApp externo) |
+| FLUX-SAD-21-aviso-cliente | Cliente notificado de imprevisto — mensagem na timeline do pedido |
 
 ---
 

@@ -1,5 +1,5 @@
 # FLUX-SAD-18-rota-gerente
-### Gerente desaloca motoboy incapacitado em trânsito (pedido refeito)
+### Gerente aciona imprevisto em rota — pedido refaz com prioridade
 
 **Gravidade:** 🔴 · **Perfis:** 🔑 🛵 👤 👨‍🍳
 
@@ -8,12 +8,12 @@
 ---
 
 **Perfis:** 🔑 Gerente · 🛵 Motoboy · 👤 Cliente · 👨‍🍳 Cozinha  
-**Causa:** Motoboy teve acidente, perdeu a consciência ou perdeu o celular — **não consegue cancelar sozinho**; o gerente precisa intervir.  
-**Veja também:** [FLUX-SAD-19-rota-motoboy](FLUX-SAD-19-rota-motoboy.md) — quando o próprio motoboy cancela a entrega em trânsito.
+**Causa:** Motoboy saiu com o pedido e teve um imprevisto — não consegue entregar nem devolver os itens à loja. O motoboy está incapacitado ou não tem como reportar; o gerente detecta o problema e aciona o protocolo.  
+**Veja também:** [FLUX-SAD-19-rota-motoboy](FLUX-SAD-19-rota-motoboy.md) — quando o motoboy tem acesso ao app e reporta o imprevisto antes do gerente agir.
 
 ```
-Motoboy saiu → fica incapacitado → gerente desaloca → lanche descartado
-→ bebidas ficam pendentes de devolução → o mesmo pedido volta para a cozinha → cliente notificado com ❗
+Motoboy saiu → imprevisto → gerente detecta → aciona refazimento com prioridade
+→ pedido vai ao topo do KDS → cozinha refaz → novo motoboy entrega → cliente recebe aviso
 ```
 
 ---
@@ -22,25 +22,16 @@ Motoboy saiu → fica incapacitado → gerente desaloca → lanche descartado
 
 | # | Quem | O que acontece |
 |---|------|----------------|
-| 1 | 🛵 Motoboy | Saiu para entrega — status `SAIU_PARA_ENTREGA`; lanche e bebidas estão com ele |
-| 2 | 🔑 Gerente | Percebe ausência de contato, não resposta ou recebe alerta externo sobre o motoboy |
-| 3 | 🔑 Gerente | Acessa o painel → **Pedidos em andamento** → localiza o pedido |
-| 4 | 🔑 Gerente | Clica em **Desalocar motoboy** e seleciona o motivo: *"Imprevisto — motoboy incapacitado"* |
-| 5 | 🔑 Gerente | Confirma a ação |
-| 6 | Sistema | O **mesmo** pedido volta para `RECEBIDO`. Auditoria grava `IMPREVISTO_ENTREGA`. `incident_alert` liga. O cliente não pode mais cancelar este pedido |
-| 7 | 🛵 Motoboy | Quando recuperar o acesso ao app recebe aviso: *"Você foi removido desta entrega."* |
-
----
-
-**Protocolo de imprevisto — destino dos itens e do pedido:**
-
-| Item | O que acontece |
-|------|----------------|
-| 🍔 Lanche | **Descartado** — estava com o motoboy. A auditoria registra a perda. Não há tela de estoque |
-| 🥤 Bebidas | Pendência de devolução do motoboy. Sem módulo de estoque |
-| 🔄 Pedido | Continua o **mesmo** número. Volta para a fila de espera da cozinha |
-| 👨‍🍳 Cozinha | Vê os itens para refazer, **sem nome do cliente** |
-| 🛵 Fila | Quando ficar `PRONTO` de novo, outro motoboy pode assumir |
+| 1 | 🛵 Motoboy | Saiu com o pedido — status `SAIU_PARA_ENTREGA` |
+| 2 | 🛵 Motoboy | Imprevisto acontece. Não consegue entregar nem devolver os itens à loja |
+| 3 | 🔑 Gerente | Percebe o problema: cliente reclama, tempo de entrega passou, ou contato externo (ligação do motoboy, notificação) |
+| 4 | 🔑 Gerente | Abre o painel → localiza o pedido → clica em **Acionar imprevisto** |
+| 5 | 🔑 Gerente | Preenche o motivo (campo obrigatório — fica na auditoria) e opcionalmente edita a mensagem para o cliente |
+| 6 | 🔑 Gerente | Confirma a ação |
+| 7 | Sistema | Muda o pedido: `status = RECEBIDO`, `priority = true`, `incident_alert = true`, `incident_message` gravado, `motoboy_id = null`, `cancelamento_bloqueado = true`, `remake_seq++` |
+| 8 | Sistema | O pedido aparece no **topo da fila do KDS** com indicador ⚡, antes de outros `RECEBIDO`, depois de qualquer `EM_PREPARO` já em andamento |
+| 9 | 👨‍🍳 Cozinha | Vê o pedido com ⚡ no topo — refaz os itens. O nome do cliente **não aparece** no KDS |
+| 10 | 🔑 Gerente | No painel, o pedido exibe cor 🔴 vermelho com ⚡ (imprevisto em refazimento) |
 
 ---
 
@@ -48,25 +39,40 @@ Motoboy saiu → fica incapacitado → gerente desaloca → lanche descartado
 
 | # | Quem | O que acontece |
 |---|------|----------------|
-| 8 | Sistema | Ativa a flag `incident_alert` no pedido → ícone **🔴 ❗** aparece no card simplificado do pedido |
-| 9 | 👤 Cliente | Vê o ícone vermelho de exclamação na tela principal — **sem texto, apenas o ícone** |
-| 10 | 👤 Cliente | Clica no card simplificado do pedido |
-| 11 | Sistema | Abre a tela completa do pedido com **caixa de aviso destacada no topo** |
-| 12 | 👤 Cliente | Lê o aviso: *"Houve um imprevisto com a entrega do seu pedido. Seu lanche está sendo refeito e logo chegará. Pedimos desculpas pelo inconveniente! 🙏"* |
-| 13 | 👤 Cliente | Vê o botão **💬 Fale Conosco** dentro da caixa de aviso |
-| 14 | 👤 Cliente | (Opcional) Clica em **Fale Conosco** → redirecionado para o **WhatsApp da loja** |
-| 15 | 👤 Cliente | Envia mensagem pelo próprio WhatsApp — atendimento fora do app |
-
-**Veja também:**  
-→ [FLUX-SAD-21-aviso-cliente](FLUX-SAD-21-aviso-cliente.md) — experiência completa do cliente ao receber a notificação e acessar o Fale Conosco  
-→ [FLUX-HAPPY-17-whatsapp](../happypaths/FLUX-HAPPY-17-whatsapp.md) — fluxo do Fale Conosco via WhatsApp
+| 11 | Sistema | Envia evento via WebSocket: `order.incident_alert` com `incidentMessage` |
+| 12 | 👤 Cliente | O pedido volta a **"Pedido recebido"** na timeline com ⚡ tag de **prioridade** |
+| 13 | Sistema | Exibe a mensagem do gerente em destaque na timeline (padrão: *"Houve um imprevisto com a entrega do seu pedido. Ele foi colocado na fila da cozinha com prioridade e logo chegará. Pedimos desculpas pelo transtorno! 🙏"*) |
+| 14 | 👤 Cliente | **Não pode cancelar** o pedido (`cancelamento_bloqueado = true`) |
+| 15 | 👤 Cliente | Pode clicar em **💬 Fale Conosco** a qualquer momento para abrir o WhatsApp da loja |
 
 ---
 
-> **Impacto:** Muito alto. Atraso significativo, custo de produto (lanche descartado) e retrabalho da cozinha. Toda ação fica registrada na auditoria com responsável e horário.
+**Protocolo de imprevisto — destino dos itens:**
+
+| Item | O que acontece |
+|------|----------------|
+| 🍔 Alimentos preparados (lanche, batata, sobremesa etc.) | **Descartados** — fora da loja, não retornam. Auditoria registra `ITEM_DISCARDED` |
+| 🥤 Bebidas em embalagem fechada | **Pendência de devolução** — o motoboy devolve pessoalmente; gerente confirma no detalhe do pedido. Evento `BEVERAGE_RETURN_PENDING` na auditoria |
+| 🔄 Pedido | Mesmo `order_id`, `RECEBIDO` com `priority = true` — topo da fila do KDS com ⚡ |
+| 🛵 Próximo motoboy | Quando `PRONTO`, qualquer motoboy disponível pode assumir normalmente |
+
+**Se a cozinha não aceitar o pedido de volta:**
+
+O pedido fica em `RECEBIDO` com prioridade. `cancelamento_bloqueado` impede **somente o cliente** de cancelar. O gerente pode cancelar com estorno a qualquer momento pelo painel — clica em **Cancelar pedido** no detalhe, informa o motivo, e o cliente recebe o estorno e aviso via WebSocket.
+
+---
+
+**Veja também:**  
+→ [FLUX-SAD-19-rota-motoboy](FLUX-SAD-19-rota-motoboy.md) — motoboy reporta o imprevisto pelo app antes do gerente agir  
+→ [FLUX-SAD-21-aviso-cliente](FLUX-SAD-21-aviso-cliente.md) — experiência completa do cliente ao receber o aviso  
+→ [FLUX-HAPPY-17-whatsapp](../happypaths/FLUX-HAPPY-17-whatsapp.md) — Fale Conosco via WhatsApp
+
+---
+
+> **Impacto:** Muito alto. Atraso significativo, custo de produto (lanche descartado) e retrabalho da cozinha. Toda ação fica registrada na auditoria com responsável, horário e motivo.
 
 ---
 
 > 📌 **Nota técnica resumida:**  
-> O mesmo `order_id` volta a `RECEBIDO`, com `incident_alert` e cancelamento do cliente bloqueado. `IMPREVISTO_ENTREGA` é o motivo na auditoria, não um segundo pedido. O Fale Conosco é um link `wa.me/[número]`.  
-> → Detalhes completos: [`../../docTecnica/ORD-01-estados-pedido.md`](../../docTecnica/ORD-01-estados-pedido.md) · [`../../docTecnica/DB-01-canal-atendimento.md`](../../docTecnica/DB-01-canal-atendimento.md)
+> O mesmo `order_id` volta a `RECEBIDO` com `priority = true` e `incident_message` definido. A fila do KDS ordena por `priority DESC, created_at ASC` — pedidos com prioridade aparecem antes. `cancelamento_bloqueado = true` impede o cliente de cancelar. O `incident_message` viaja via WebSocket `order.incident_alert` para o canal `order:{orderId}`. O Fale Conosco é `wa.me/[número]`.  
+> → Detalhes: [`../../docTecnica/ORD-01-estados-pedido.md`](../../docTecnica/ORD-01-estados-pedido.md) · [`../../docTecnica/DB-01-canal-atendimento.md`](../../docTecnica/DB-01-canal-atendimento.md)

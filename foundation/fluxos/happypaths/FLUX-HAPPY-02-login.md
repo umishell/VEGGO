@@ -24,4 +24,4 @@ Cliente já tem conta → faz login → navega pelo cardápio
 | 5 | 👤 Cliente | Toca em um produto para ver foto, descrição e preço |
 | 6 | 👤 Cliente | Navega à vontade pelas categorias |
 
-> 💡 Itens indisponíveis **não aparecem** no cardápio — o cliente só vê o que pode comprar.
+> 💡 Itens `PAUSADO_DIA` e `BLOQUEADO` **aparecem cinza** no cardápio — o cliente vê que o produto existe mas não pode pedir. Itens `ARQUIVADO` não aparecem (ocultos administrativamente pelo gerente). O cliente só adiciona ao carrinho itens `DISPONIVEL`.

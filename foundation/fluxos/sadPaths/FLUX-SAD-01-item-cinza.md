@@ -30,3 +30,16 @@ Item **apagado** pelo gerente não passa por esta tela: ele não está mais na l
 > **Impacto:** Baixo. O cliente entende por que não pede, em vez de achar que o produto foi tirado do cardápio para sempre.
 
 **Resolução:** reativação manual (cozinha ou gerente). `PAUSADO_DIA` também volta sozinho na meia-noite. `BLOQUEADO` não.
+
+---
+
+## Diferença entre cinza e invisível
+
+| Situação | O cliente vê o item? | Por que |
+|----------|---------------------|---------|
+| `PAUSADO_DIA` | ✅ Sim — cinza | Ingrediente acabou hoje; produto voltará amanhã |
+| `BLOQUEADO` | ✅ Sim — cinza | Produto temporariamente suspenso; volta quando gerente/cozinha reativar |
+| `ARQUIVADO` | ❌ Não aparece | Gerente optou por ocultar o item completamente (sem dar ciência ao cliente). Apenas gerente vê na seção "Itens arquivados" |
+| Apagado (físico) | ❌ Não existe | Excluído permanentemente — sem volta |
+
+> **Regra de UX:** itens cinzas comunicam ao cliente que o produto existe mas está temporariamente fora. `ARQUIVADO` é para itens que não devem nem criar expectativa — produtos descontinuados na prática, em reformulação, ou sazonais sem previsão de retorno próximo.

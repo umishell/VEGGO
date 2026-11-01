@@ -38,11 +38,11 @@ Destino: o pedido `order:{orderId}`, a cozinha `kitchen:{storeId}`, a fila `deli
 Payload mínimo:
 
 ```text
-order.status_changed  { orderId, newStatus, occurredAt }
-order.incident_alert  { orderId, incidentAlert }
+order.status_changed  { orderId, newStatus, priority, occurredAt }
+order.incident_alert  { orderId, incidentAlert, incidentMessage }
 ```
 
-Publica quem muda estado: cozinha (aceitar já é `EM_PREPARO`), motoboy, gerente e o próprio sistema (timeout de alocação e imprevisto em rota). Não existe evento de recusa de pedido.
+Publica quem muda estado: cozinha (aceitar já é `EM_PREPARO`), motoboy, gerente e o próprio sistema (imprevisto em rota). Não existe evento de recusa de pedido. O campo `priority` viaja no `status_changed` para o KDS ordenar a fila. O `incidentMessage` viaja no `incident_alert` para exibição na timeline do cliente.
 
 Inscrições:
 
@@ -59,6 +59,13 @@ O servidor só assina o cliente no destino se a policy do pedido autorizar.
 ## 4. App fechado
 
 A conexão cai quando a aba fecha. Ao abrir de novo, o cliente busca o estado por REST e abre outro WebSocket. O que vale é a linha no PostgreSQL.
+
+A cozinha reconecta automaticamente sem intervenção do cozinheiro (backoff + HTTP GET ao reconectar). Detalhes completos em INF-02.
+
+---
+
+**Protocolo detalhado por transição de estado, lifecycle da cozinha, heartbeat, reconexão e payloads:**  
+→ [INF-02-http-vs-websocket.md](INF-02-http-vs-websocket.md)
 
 ---
 

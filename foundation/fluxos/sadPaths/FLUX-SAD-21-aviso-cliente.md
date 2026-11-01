@@ -1,5 +1,5 @@
 # FLUX-SAD-21-aviso-cliente
-### Cliente notificado de imprevisto — ícone de alerta e Fale Conosco via WhatsApp
+### Cliente notificado de imprevisto — aviso na timeline e Fale Conosco
 
 **Gravidade:** 🟠 · **Perfis:** 👤
 
@@ -8,61 +8,54 @@
 ---
 
 **Perfis:** 👤 Cliente  
-**Causa:** Disparado automaticamente pelos fluxos [FLUX-SAD-18-rota-gerente](FLUX-SAD-18-rota-gerente.md) ou [FLUX-SAD-19-rota-motoboy](FLUX-SAD-19-rota-motoboy.md) quando ocorre um imprevisto na entrega.
+**Causa:** Disparado após o gerente acionar o protocolo de imprevisto em rota ([FLUX-SAD-18-rota-gerente](FLUX-SAD-18-rota-gerente.md) ou [FLUX-SAD-19-rota-motoboy](FLUX-SAD-19-rota-motoboy.md)).
 
 ```
-Imprevisto detectado → ícone ❗ aparece no card do cliente
-→ cliente clica → caixa de aviso → Fale Conosco → abre WhatsApp da loja
+Gerente aciona imprevisto → pedido volta a RECEBIDO com prioridade
+→ cliente vê status atualizar + mensagem do gerente na timeline em tempo real
+→ pode usar Fale Conosco a qualquer momento
 ```
 
 ---
 
-**Parte 1 — Ícone de alerta no card simplificado:**
+**O que o cliente vê — na ordem:**
 
 | # | Quem | O que acontece |
 |---|------|----------------|
-| 1 | Sistema | Ativa `incident_alert: true` no pedido afetado (via FLUX-SAD-18-rota-gerente ou FLUX-SAD-19-rota-motoboy) |
-| 2 | 👤 Cliente | Na tela principal, o card simplificado do pedido exibe o ícone **🔴 ❗** no canto |
-| 3 | 👤 Cliente | **Não vê texto explicativo no card** — apenas o ícone vermelho de exclamação |
+| 1 | Sistema | Evento de imprevisto dispara: `incident_alert = true`, `priority = true`, `incident_message` definido |
+| 2 | Sistema | WebSocket empurra o evento `order.incident_alert` para o canal `order:{orderId}` do cliente em tempo real |
+| 3 | 👤 Cliente | Na timeline do pedido, o estado muda de volta para **"Pedido recebido"** com ⚡ tag de **prioridade** |
+| 4 | Sistema | A mensagem do gerente aparece em destaque como novo evento na timeline (ex: *"Houve um imprevisto com a entrega. Seu pedido foi colocado na fila da cozinha com prioridade e logo chegará! 🙏"*) |
+| 5 | 👤 Cliente | No card simplificado da tela principal, vê o indicador ⚡ e o estado "Recebido — prioridade" |
+| 6 | 👤 Cliente | **Não pode cancelar** o pedido (`cancelamento_bloqueado = true`) |
+| 7 | 👤 Cliente | Pode clicar em **💬 Fale Conosco** a qualquer momento |
 
 ---
 
-**Parte 2 — Tela completa do pedido:**
+**Parte 2 — Fale Conosco:**
 
 | # | Quem | O que acontece |
 |---|------|----------------|
-| 4 | 👤 Cliente | Clica no card simplificado do pedido |
-| 5 | Sistema | Abre a tela completa de detalhes do pedido |
-| 6 | Sistema | Exibe **caixa de aviso em destaque no topo** da tela (antes dos detalhes do pedido) |
-| 7 | 👤 Cliente | Lê a mensagem: *"Houve um imprevisto com a entrega do seu pedido. Seu lanche está sendo refeito e logo chegará. Pedimos desculpas pelo inconveniente! 🙏"* |
-| 8 | 👤 Cliente | Vê o botão **💬 Fale Conosco** dentro da caixa de aviso |
+| 8 | 👤 Cliente | Clica em **💬 Fale Conosco** — disponível no card do pedido ou no dashboard principal |
+| 9 | Sistema | Abre o link externo `wa.me/[número da loja]` |
+| 10 | 👤 Cliente | WhatsApp abre pronto para enviar mensagem |
+| 11 | 🔑 Gerente | Atende pelo WhatsApp — fora do app de delivery |
 
----
-
-**Parte 3 — Fale Conosco (via imprevisto ou via dashboard):**
-
-| # | Quem | O que acontece |
-|---|------|----------------|
-| 9 | 👤 Cliente | Clica em **💬 Fale Conosco** — dentro da caixa de aviso do pedido **ou** no dashboard principal |
-| 10 | Sistema | Redireciona o cliente para o **WhatsApp da loja** via link externo (`wa.me/[número]`) |
-| 11 | 👤 Cliente | WhatsApp abre com a conversa da loja pronta para digitar |
-| 12 | 👤 Cliente | Envia sua mensagem pelo próprio WhatsApp |
-
-> O atendimento acontece **fora do app**, diretamente no WhatsApp. O app não armazena nem gerencia mensagens.
+> O atendimento acontece **fora do app**. O app não armazena nem processa mensagens.
 
 ---
 
 **Veja também:**  
-→ [FLUX-SAD-18-rota-gerente](FLUX-SAD-18-rota-gerente.md) — gerente desaloca motoboy incapacitado (dispara este fluxo)  
-→ [FLUX-SAD-19-rota-motoboy](FLUX-SAD-19-rota-motoboy.md) — motoboy cancela em trânsito (dispara este fluxo)  
-→ [FLUX-HAPPY-17-whatsapp](../happypaths/FLUX-HAPPY-17-whatsapp.md) — fluxo completo do Fale Conosco via WhatsApp
+→ [FLUX-SAD-18-rota-gerente](FLUX-SAD-18-rota-gerente.md) — gerente aciona o imprevisto diretamente  
+→ [FLUX-SAD-19-rota-motoboy](FLUX-SAD-19-rota-motoboy.md) — motoboy reporta, gerente confirma  
+→ [FLUX-HAPPY-17-whatsapp](../happypaths/FLUX-HAPPY-17-whatsapp.md) — fluxo completo do Fale Conosco
 
 ---
 
-> **Impacto:** Médio — afeta a experiência do cliente. O ícone ❗ e a caixa de aviso comunicam o problema sem necessidade de ação imediata. O Fale Conosco conecta o cliente à loja pelo WhatsApp sem adicionar complexidade ao sistema.
+> **Impacto:** Médio. A mensagem do gerente e o indicador ⚡ de prioridade comunicam o problema de forma clara e positiva — o cliente sabe que o pedido não foi abandonado e está sendo refeito com urgência.
 
 ---
 
 > 📌 **Nota técnica resumida:**  
-> Flag `incident_alert: boolean` no registro do pedido controla a exibição do ícone `❗`. O botão Fale Conosco é um link externo `wa.me/[número]` — sem banco de mensagens, sem WebSocket, sem lógica de chat no app.  
-> → Detalhes: [`../../docTecnica/DB-01-canal-atendimento.md`](../../docTecnica/DB-01-canal-atendimento.md)
+> `incident_alert: boolean` e `incident_message: string` ficam no registro do pedido (`orders`). O WebSocket empurra o evento `order.incident_alert { orderId, incidentAlert, incidentMessage }` para o canal `order:{orderId}`. O frontend exibe `incidentMessage` como novo item da timeline, com ⚡ e destaque visual. O Fale Conosco é um link externo `wa.me` — sem banco de mensagens, sem chat interno.  
+> → Detalhes: [`../../docTecnica/DB-01-canal-atendimento.md`](../../docTecnica/DB-01-canal-atendimento.md) · [`../../docTecnica/INF-01-tempo-real.md`](../../docTecnica/INF-01-tempo-real.md)

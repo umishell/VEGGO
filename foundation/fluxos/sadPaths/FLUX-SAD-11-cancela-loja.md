@@ -27,6 +27,6 @@ Um pedido em andamento → gerente cancela esse pedido → cozinha para esse ped
 | 6 | 👤 Cliente | Recebe **"Seu pedido foi cancelado pela loja. Motivo: [motivo]. Pagamento estornado."** |
 | 7 | 👤 Cliente | Vê o pedido como **Cancelado** no histórico |
 
-> Pedido em `ALOCADO` não usa este fluxo: o gerente desaloca e o lanche fica na loja ([FLUX-SAD-16-entrega-desiste](FLUX-SAD-16-entrega-desiste.md)). Pedido em `SAIU_PARA_ENTREGA` não é cancelado com estorno: vira refazimento do mesmo pedido ([FLUX-SAD-18-rota-gerente](FLUX-SAD-18-rota-gerente.md)).
+> Pedido em `SAIU_PARA_ENTREGA` não é cancelado com estorno: o gerente aciona o protocolo de imprevisto e o mesmo pedido volta à fila com prioridade ([FLUX-SAD-18-rota-gerente](FLUX-SAD-18-rota-gerente.md)).
 
 > **Impacto:** Alto. Estorno e auditoria com responsável, horário, motivo e estado anterior.
