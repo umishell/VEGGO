@@ -4,8 +4,8 @@
 
 | Menu | Conteúdo |
 |------|----------|
-| [Happy path — fluxos normais](happypaths/README.md) | 19 cenários `FLUX-HAPPY-01-cadastro` … `FLUX-HAPPY-19-stats` |
-| [Sad path — problemas e erros](sadPaths/README.md) | 21 cenários `FLUX-SAD-01-item-cinza` … `FLUX-SAD-23-acesso-loja` |
+| [Happy path — fluxos normais](happypaths/README.md) | `FLUX-HAPPY-01` … `FLUX-HAPPY-22` (+ `02-recuperacao`, `20-motoboy`, `21-checkout`, `22-cardapio`) |
+| [Sad path — problemas e erros](sadPaths/README.md) | Ver índice (`FLUX-SAD-01` … `FLUX-SAD-24`, mais IDs temáticos) |
 
 **Destaque:** [FLUX-HAPPY-05-venda](happypaths/FLUX-HAPPY-05-venda.md) — venda completa até a entrega.
 
@@ -15,4 +15,5 @@ Documentos na raiz (legado, redirecionam para cá):
 - [`cenarios_Problemas_Erros.md`](../cenarios_Problemas_Erros.md)
 
 Especificação técnica de produto: [`foundation/pitch_delivery.md`](../pitch_delivery.md)  
+**Ordem de implementação (IA):** [`IMP-01-ordem-implementacao-ai.md`](../IMP-01-ordem-implementacao-ai.md)  
 **Documentação técnica (infraestrutura, banco de dados, padrões):** [`foundation/docTecnica/`](../docTecnica/README.md)

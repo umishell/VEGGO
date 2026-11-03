@@ -22,6 +22,6 @@ Motoboy tenta assumir pedido fora da sua loja → sistema bloqueia
 | 2 | Sistema | Verifica se o pedido pertence à loja do motoboy |
 | 3 | Sistema | **Pedido de outra loja — acesso negado** |
 | 4 | 🛵 Motoboy | Recebe: **"Você não tem permissão para este pedido."** |
-| 5 | Sistema | Registra a tentativa na auditoria |
+| 5 | Sistema | Responde **403** |
 
 > **Impacto:** Nenhum operacional. A autorização por atributo (FGAC: `lojaId` do motoboy vs `lojaId` do pedido) garante o isolamento entre lojas — mesmo com uma única instância do sistema.

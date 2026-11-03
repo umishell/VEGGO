@@ -29,9 +29,9 @@ Após finalizar, o cliente abre a tela de acompanhamento
 | 6 | 👤 Cliente | Vê na timeline: **Em preparo** 🍳 |
 | 7 | 👨‍🍳 Cozinha | Clica em **Marcar como pronto** |
 | 8 | 👤 Cliente | Vê: **Pronto para retirada** 📦 |
-| 9 | 🛵 Motoboy | Clica em **Assumir e sair** — transição direta para `SAIU_PARA_ENTREGA` |
+| 9 | 🛵 Motoboy | Clica **Aceitar pedido** — `SAIU_PARA_ENTREGA` |
 | 10 | 👤 Cliente | Vê: **Pedido saiu para entrega** 🚀 |
-| 10a | Sistema | Junto com a atualização de estado, **aparecem dois botões de contato** na tela |
+| 10a | Sistema | Na área de ações da timeline: **💬 Fale com a loja** (sempre) e **🛵 WhatsApp do motoboy** (novo neste estado) |
 | 11 | 🛵 Motoboy | Clica em **Confirmar entrega** |
 | 12 | 👤 Cliente | Vê: **Pedido entregue! ✅** — evento de venda encerrado |
 | 12a | Sistema | O botão **"Contatar motoboy"** desaparece automaticamente |
@@ -42,8 +42,8 @@ Após finalizar, o cliente abre a tela de acompanhamento
 
 | Botão | Visível em | Some em |
 |-------|------------|---------|
-| 💬 **Fale com a loja** (WhatsApp do gerente) | Sempre | Nunca some |
-| 🛵 **Contatar motoboy** (WhatsApp do motoboy) | `SAIU_PARA_ENTREGA` | `ENTREGUE` (ou se o pedido for cancelado/imprevisto) |
+| 💬 **Fale com a loja** | WhatsApp da loja — fixo na timeline | Qualquer estado do pedido | Nunca |
+| 🛵 **WhatsApp do motoboy** / **Contatar motoboy** | WhatsApp do entregador alocado | `SAIU_PARA_ENTREGA` | `ENTREGUE`, cancelamento ou imprevisto (motoboy desvinculado) |
 
 > Se ocorrer um imprevisto e o pedido voltar a `RECEBIDO`, o botão **"Contatar motoboy" desaparece** — o motoboy foi desvinculado. O cliente usa **Fale com a loja** (sempre visível).
 
@@ -64,7 +64,7 @@ Pedido recebido → Em preparo → Pronto → Saiu para entrega → Entregue
 ---
 
 **Veja também:**  
-→ [FLUX-HAPPY-17-whatsapp](FLUX-HAPPY-17-whatsapp.md) — todos os contextos de Fale Conosco  
+→ [FLUX-HAPPY-17-whatsapp](FLUX-HAPPY-17-whatsapp.md) — **nos contacte** + WhatsApp loja e motoboy  
 → [FLUX-SAD-21-aviso-cliente](../sadPaths/FLUX-SAD-21-aviso-cliente.md) — o que acontece quando há imprevisto  
 
 ---

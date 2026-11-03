@@ -66,7 +66,7 @@ Cozinha identifica problema grave → alerta gerente
 
 **Veja também:**  
 → [FLUX-HAPPY-10-item-gerente](../happypaths/FLUX-HAPPY-10-item-gerente.md) — gerente pausa item individual (prevenção nível 2)  
-→ [FLUX-HAPPY-11-item-cozinha](../happypaths/FLUX-HAPPY-11-item-cozinha.md) — cozinha pausa ou bloqueia um item (prevenção nível 1)  
+→ [FLUX-HAPPY-10-item-gerente](../happypaths/FLUX-HAPPY-10-item-gerente.md) — gerente pausa item no cardápio (prevenção nível 1)  
 → [FLUX-HAPPY-12-horario](../happypaths/FLUX-HAPPY-12-horario.md) — loja abre e fecha automaticamente no horário configurado  
 → [FLUX-SAD-11-cancela-loja](FLUX-SAD-11-cancela-loja.md) — gerente cancela pedido já aceito (emergência extrema, último recurso)
 
@@ -77,5 +77,5 @@ Cozinha identifica problema grave → alerta gerente
 ---
 
 > 📌 **Nota técnica resumida:**  
-> Campo `store_status` na tabela `stores`: `ABERTA` | `FECHADA_HORARIO` | `FECHADA_EMERGENCIA`. Fechamento de emergência registra `closed_reason` (texto) e `closed_at` (timestamp) para auditoria. O banner do cliente lê `store_status` e `closed_reason` em tempo real.  
+> Campo `store_status` na tabela `stores`: `ABERTA` | `FECHADA_HORARIO` | `FECHADA_EMERGENCIA`. Fechamento de emergência grava `closed_reason` (texto) e `closed_at` (timestamp). O banner do cliente lê `store_status` e `closed_reason` em tempo real.  
 > → Detalhes: [`../../docTecnica/DB-02-disponibilidade-itens.md`](../../docTecnica/DB-02-disponibilidade-itens.md)

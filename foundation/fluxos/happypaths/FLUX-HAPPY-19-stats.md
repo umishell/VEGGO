@@ -22,7 +22,7 @@ Gerente abre Estatísticas → escolhe o período e a visão
 
 ### Tela 1 — Resumo do dia
 
-Acessada também pelo painel principal; complementa o [FLUX-HAPPY-18-painel](FLUX-HAPPY-18-painel.md).
+Acessada também pelo painel principal; complementa o [FLUX-HAPPY-18-painel](FLUX-HAPPY-18-painel.md). O painel inclui **rodapé** com métricas resumidas (DB-03 § 6.1).
 
 | Indicador | Descrição | MVP? |
 |-----------|-----------|------|
@@ -30,7 +30,7 @@ Acessada também pelo painel principal; complementa o [FLUX-HAPPY-18-painel](FLU
 | Faturamento do dia | Soma dos pedidos `ENTREGUE` (não conta cancelados) | ✅ |
 | Ticket médio | Valor médio por pedido entregue | ✅ |
 | Pedidos em andamento agora | Contagem em tempo real | ✅ |
-| Tempo médio da cozinha | `EM_PREPARO` → `PRONTO` | ✅ |
+| Tempo médio da cozinha | Média de `prep_duration_seconds` no período | ✅ |
 | Tempo médio de entrega | `SAIU_PARA_ENTREGA` → `ENTREGUE` | ✅ |
 
 ---
@@ -98,4 +98,4 @@ Acessada também pelo painel principal; complementa o [FLUX-HAPPY-18-painel](FLU
 
 > 📌 **Nota técnica resumida:**  
 > As métricas das Telas 2–5 são geradas por queries de agregação em PostgreSQL, com índices nos campos de data e status. Todos os agrupamentos por dia usam `(created_at AT TIME ZONE stores.timezone)::date` para respeitar o fuso da loja. Não há tabela de pré-agregação no MVP — as queries rodam sob demanda. Para períodos longos, o tempo de resposta pode aumentar; paginação e cache de resultado podem ser adicionados fora do MVP.  
-> → SQL completo de todas as métricas ✅: [`../../docTecnica/DB-03-telemetria.md`](../../docTecnica/DB-03-telemetria.md)
+> → SQL completo de todas as métricas ✅: [`../../docTecnica/DB-03-telemetria.md`](../../docTecnica/DB-03-telemetria.md) · Rodapés embutidos (cardápio, painel): [INF-04 § 5](../../docTecnica/INF-04-ui-operacao-cliente.md)

@@ -60,7 +60,7 @@ Visão geral. O que falta aqui vira argumento de reprovação ou de “CRUD com 
 - Camadas limpas no Spring (aplicação / domínio / infra)
 - Gateway Fastify: auth cookies, agregação, CORS, rate limit básico, roteamento HATEOAS-friendly
 - Sem microserviços no TCC (custo sem ganho de banca)
-- Auditoria das transações críticas (quem, quando, o quê, estado anterior/novo)
+- Timeline do pedido e transições persistidas para operação (sem módulo de auditoria administrativa no produto)
 
 ---
 

@@ -22,6 +22,6 @@ Cliente tenta ver pedido que não é dele → sistema bloqueia → erro de permi
 | 2 | Sistema | Verifica se o pedido pertence ao cliente logado |
 | 3 | Sistema | **Pedido não pertence a este usuário — acesso negado** |
 | 4 | 👤 Cliente | Vê: **"Pedido não encontrado"** (sem revelar que o pedido existe) |
-| 5 | Sistema | Registra a tentativa de acesso indevido na auditoria |
+| 5 | Sistema | Responde **403** — pedido não exposto |
 
 > **Impacto:** Nenhum para o outro cliente. A segurança (FGAC) garante que cada usuário vê **apenas seus próprios pedidos**, mesmo que tente acessar IDs alheios diretamente.

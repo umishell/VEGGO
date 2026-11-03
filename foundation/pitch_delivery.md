@@ -2,37 +2,36 @@
 
 Sistema para **uma** hamburgueria vegana de delivery própria: o cliente pede, a cozinha opera o pedido, o entregador assume a corrida. O núcleo é o **ciclo de vida do pedido**, com regras de negócio, transições de estado, transações ACID e alocação exclusiva do motoboy sob concorrência.
 
-Este documento é a definição do MVP: o que o sistema **é**. Fluxos narrativos em `foundation/fluxos/`. Decisões de banco, estados e tempo real em `foundation/docTecnica/`.
+Este documento é a definição do MVP: o que o sistema **é**. Fluxos narrativos em `foundation/fluxos/`. Decisões de banco, estados e tempo real em `foundation/docTecnica/`. **Ordem de implementação (IA):** [`IMP-01-ordem-implementacao-ai.md`](IMP-01-ordem-implementacao-ai.md).
 
 ---
 
 ## 1. O que o sistema faz
 
+| Área           | Comportamento                                                                                                                                                                                                                                                                                                                                                                                                                |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Identidade     | **Cliente:** autocadastro no app; **recuperação de senha** por e-mail (código + nova senha 2×). **Cozinha e motoboy:** só o gerente cadastra na tela **Funcionários**; senha definida pelo funcionário na hora (gerente não vê). Reset de senha de funcionário: só gerente, com funcionário presente. Gerente desativa contas. **Cozinha:** qualquer funcionário logado abre o mesmo KDS — sem escala designada pelo gerente |
+| Cardápio       | Categorias MVP ([DB-04](docTecnica/DB-04-catalogo-checkout-cliente.md)); limite diário ([DB-02](docTecnica/DB-02-disponibilidade-itens.md) § 1.2). **Só gerente** pausa/bloqueia/arquiva/apaga |
+| Pedido         | Checkout atômico; `display_number` visível (cliente, KDS, embalagem, motoboy)                                                                                                                                                                                                                                                                                                                                                |
+| Pagamento      | Simulado no próprio sistema (mock MVP), atômico com o pedido. Cliente usa forma salva (autofill) ou cadastra na hora no checkout. Estorno só quando o pedido vai para `CANCELADO`                                                                                                                                                                                                                                            |
+| Cozinha (KDS)  | **Esquerda:** lista `RECEBIDO` + `EM_PREPARO` (⚡ + ordem de chegada); clique **seleciona** (não prepara sozinho). **Direita:** detalhe + **Preparar** (↖) / **Concluir preparo** (↗), timer central; vários preparos simultâneos. Ao concluir → some; anotar `display_number` na embalagem |
+| Entrega        | Fila `PRONTO` no app; motoboy confere `display_number` na embalagem → **Aceitar pedido** → tela com nome, telefone, WhatsApp, Waze e Maps → **Finalizar entrega**                                                                                                                                                                                                                                                            |
+| Loja           | Status `ABERTA`, `FECHADA_HORARIO`, `FECHADA_PROGRAMADA` ou `FECHADA_EMERGENCIA`. Horário semanal + eventos `CLOSURE`/`OPENING` em `store_schedules`. Emergência só o gerente reabre. Cliente vê cinza + countdown quando há previsão                                                                                                                                                                                        |
+| Entrega (taxa) | **Valor fixo** por pedido: gerente define em **Configurações → Loja** (`fixed_delivery_fee_cents`). Checkout soma ao subtotal e grava snapshot em `delivery_fee_cents`. CEP/endereço **não** alteram o valor ([FLUX-HAPPY-12](fluxos/happypaths/FLUX-HAPPY-12-horario.md) · [DB-02](docTecnica/DB-02-disponibilidade-itens.md) § 2) |
+| Endereço       | Cadastro no perfil (**Endereços salvos**). No checkout: combobox com endereço **padrão** pré-selecionado; cliente escolhe outro salvo ou **adiciona novo** na hora (salva no perfil). Cópia completa gravada no pedido                                                                                                                                                                                                       |
+| Acompanhamento | Timeline do mesmo pedido, sem mapa, empurrada por WebSocket                                                                                                                                                                                                                                                                                                                                                                  |
+| Atendimento    | Tela **nos contacte** com atalho **WhatsApp da loja** (`GET /store/contact-links`). Na **timeline** do pedido: **Fale com a loja** (sempre) e **WhatsApp do motoboy** em `SAIU_PARA_ENTREGA` (`GET /orders/{id}/contact-links`). Sem chat interno                                                                                                                                                                            |
+| Telemetria     | Painel do dia (coluna **tempo preparo**, rodapé estatísticas); tela Estatísticas; rodapés no **Cardápio** e demais telas gerente ([DB-03](docTecnica/DB-03-telemetria.md) § 6 · [INF-04](docTecnica/INF-04-ui-operacao-cliente.md) § 5) |
 
-| Área           | Comportamento |
-| -------------- | ------------- |
-| Identidade     | Cadastro, login e sessão por perfil. Gerente cadastra e desativa cozinha e motoboy |
-| Cardápio       | Categorias e produtos. Item `DISPONIVEL`, `PAUSADO_DIA`, `BLOQUEADO` ou `ARQUIVADO`. Gerente e cozinha mudam `PAUSADO_DIA`/`BLOQUEADO`. Só o gerente arquiva (oculta sem apagar), desarquiva e apaga fisicamente. Cada produto tem `item_type` (`PREPARED_FOOD` ou `SEALED_BEVERAGE`) para o protocolo de imprevisto em rota |
-| Pedido         | Checkout atômico, máquina de estados, cancelamento do cliente enquanto o preparo não começou |
-| Pagamento      | Simulado no próprio sistema, atômico com o pedido. Estorno só quando o pedido vai para `CANCELADO` |
-| Cozinha (KDS)  | Aceitar tira o pedido da fila e inicia o preparo; depois marca pronto. Pedido na fila não é recusado |
-| Entrega        | Motoboy assume pedido pronto (lock) e sai em passo único. Tela de entrega exibe endereço completo + atalhos de navegação (Waze / Google Maps) e contato WhatsApp com o cliente. Imprevisto em rota refaz o **mesmo** pedido |
-| Loja           | Status `ABERTA`, `FECHADA_HORARIO`, `FECHADA_PROGRAMADA` ou `FECHADA_EMERGENCIA`. Horário semanal + eventos `CLOSURE`/`OPENING` em `store_schedules`. Emergência só o gerente reabre. Cliente vê cinza + countdown quando há previsão |
-| Frete          | Taxa por zona (CEP/bairro), cadastrada pelo gerente, recalculada e gravada no checkout |
-| Endereço       | Todo endereço usado no checkout é salvo. Cliente escolhe, edita, apaga e define o padrão |
-| Acompanhamento | Timeline do mesmo pedido, sem mapa, empurrada por WebSocket |
-| Atendimento    | Gerente cadastra `whatsapp_number` da loja. Clientes e motoboys têm `phone`. Links WhatsApp montados pelo backend com contexto (número do pedido). Nenhuma mensagem é armazenada |
-| Telemetria     | Painel do dia operacional (data civil no fuso da loja): pedidos ao vivo com estado colorido, sem sumir ao reabrir após pausa programada. Telas históricas: volume, faturamento, itens, clientes, operação |
-| Auditoria      | Quem, quando, estado anterior e novo em cada transição crítica |
+**Fora do sistema (MVP):** não há **módulo de auditoria** (telas, relatórios ou trilha administrativa de “quem fez o quê”). **Não há cupom nem promoção** no checkout. Controles operacionais ficam em **Funcionários**, **cardápio/pedidos** (gerente), **KDS** (cozinha) e **fila/histórico** (motoboy). O cliente monta pedido pelo **cardápio + carrinho + checkout** (endereço e pagamento mock como acima).
 
-
-Checkout revalida disponibilidade no commit: item que não está `DISPONIVEL` aborta a transação (HTTP 409). Nada é cobrado.
+Checkout revalida disponibilidade no commit: item `DISPONIVEL`, loja `ABERTA`, **teto diário** (se configurado) e quantidade no carrinho — qualquer falha aborta a transação (HTTP 409). Nada é cobrado.
 
 Dois motoboys não ficam com o mesmo pedido: um ganha; o outro recebe 409.
 
-Pedido já pago entra na fila da cozinha como `RECEBIDO` e não é recusado nem cancelado por timeout. Se ninguém aceita, permanece `RECEBIDO` e o gerente vê um alerta. Aceitar é a mesma ação que iniciar o preparo: o estado seguinte é `EM_PREPARO`. Não existe estado `ACEITO`.
+Pedido já pago entra na fila da cozinha como `RECEBIDO` e não é recusado nem cancelado por timeout. A cozinha **seleciona** um pedido na lista e clica **Preparar** para iniciar (`EM_PREPARO`); pode ter **vários** em preparo.
 
-Não há módulo de estoque. Bebida que volta depois de um imprevisto em rota é pendência do motoboy, registrada na auditoria.
+Não há módulo de **estoque físico**. Há **limite diário de pedidos por produto** (planejamento operacional; ver DB-02 § 1.2). Bebida que volta depois de um imprevisto em rota é pendência operacional do motoboy (gerente confirma devolução no detalhe do pedido).
 
 ---
 
@@ -40,22 +39,18 @@ Não há módulo de estoque. Bebida que volta depois de um imprevisto em rota é
 
 Quatro papéis. Na loja única, o gerente é o administrador da operação (usuários da loja, cardápio, motoboys ativos).
 
-
 | Perfil                | Papel                                                                | Aplicação      |
 | --------------------- | -------------------------------------------------------------------- | -------------- |
 | `CLIENTE`             | Pede, paga (simulado), acompanha, cancela na janela                  | `app-cliente`  |
 | `GERENTE_LOJA`        | Cardápio (incluindo arquivar), usuários da loja, KDS, cancelamento de pedido em andamento, acionamento de imprevisto em rota | `web-operacao` |
-| `FUNCIONARIO_COZINHA` | Aceita, prepara, marca pronto, pausa ou bloqueia item                | `web-operacao` |
-| `MOTOBOY`             | Fila, assume, sai para entrega, confirma, encerra e inicia turno     | `app-motoboy`  |
-
-
+| `FUNCIONARIO_COZINHA` | KDS: aceitar da fila, preparar conferindo linhas, concluir pedido | `web-operacao` |
+| `MOTOBOY`             | Fila de prontos, detalhe da entrega, histórico de corridas; turno; assume e confirma entrega | `app-motoboy`  |
 
 | Aplicação      | Tecnologia                 | Telas |
 | -------------- | -------------------------- | ----- |
-| `web-operacao` | Angular + TypeScript       | **Login** · **KDS** (cozinha e gerente) · **Cardápio** (cadastro, pausa, bloqueio, exclusão de item) · **Usuários da loja** (cozinha e motoboy) · **Horário semanal** e **eventos especiais** (`CLOSURE` / `OPENING`) · **Zonas de frete** · **WhatsApp da loja** (`whatsapp_number`) · **Painel — pedidos do dia** (lista ao vivo, filtros) · **Estatísticas / telemetria** (resumo do dia, histórico, itens, clientes, operação) · ações de exceção (cancelar pedido, imprevisto em rota) |
-| `app-cliente`  | Android · Kotlin + Jetpack | **Login/cadastro** · **Cardápio** · **Carrinho** · **Checkout** (endereço, frete, pagamento simulado) · **Histórico** · **Detalhe e timeline** do pedido · **Endereços salvos** · **Fale Conosco** (WhatsApp) |
-| `app-motoboy`  | Android · Kotlin + Jetpack | **Login** · **Iniciar / encerrar turno** · **Fila** de pedidos prontos · **Assumir** e **sair para entrega** · **Confirmar entrega** · pedido ativo em rota |
-
+| `web-operacao` | Angular + TypeScript       | **Login** · **KDS** · **Cardápio** (CRUD, limite diário, pausa, bloqueio, arquivar — **gerente**) · **Funcionários** · **Horário / Config. loja** (WhatsApp, fuso, **taxa de entrega fixa**) · **Painel do dia** · **Estatísticas** · exceções de pedido |
+| `app-cliente`  | Android · Kotlin + Jetpack | Login · cadastro · recuperar senha · cardápio · carrinho · checkout · histórico · **nos contacte** (WhatsApp loja) · **Acompanhar pedido** (timeline + WhatsApp loja e motoboy) · endereços · pagamentos salvos |
+| `app-motoboy`  | Android · Kotlin + Jetpack | **Login** · **Turno** · **Fila** (tela principal) · **Detalhe da entrega** · **Confirmar entrega** · **Histórico** de corridas aceitas |
 
 `web-operacao` (Angular web) é exclusivo para a operação interna da loja. Clientes e motoboys usam apps nativos Android. Menus e botões seguem o perfil; a API autoriza de novo no servidor.
 
@@ -80,8 +75,6 @@ flowchart LR
   GW --> API
 ```
 
-
-
 ```text
 Cliente cria pedido e pagamento simulado
         → Cozinha aceita, prepara e marca pronto
@@ -97,31 +90,33 @@ Cliente cria pedido e pagamento simulado
 
 Atributos do usuário: `userId`, `roles`, `lojaId` (nulo no cliente), `motoboyAtivo`.
 
-> **`motoboyAtivo` no JWT** significa que o motoboy tem conta ativa **e** turno iniciado (`delivery_persons.status = DISPONIVEL` ou `EM_ENTREGA`). Conta ativa sem turno iniciado (`INATIVO`) gera `motoboyAtivo = false` — o motoboy loga, mas não vê pedidos nem pode assumir. Após um imprevisto confirmado, o motoboy envolvido retorna automaticamente a `DISPONIVEL` (turno continua ativo).  
-Atributos do pedido: `clienteId`, `lojaId`, `motoboyId`, `estado`, `cancelamentoBloqueado`.
-
+> `motoboyAtivo` **no JWT** significa que o motoboy tem conta ativa **e** turno iniciado (`delivery_persons.status = DISPONIVEL` ou `EM_ENTREGA`). Conta ativa sem turno iniciado (`INATIVO`) gera `motoboyAtivo = false` — o motoboy loga, mas não vê pedidos nem pode assumir. Após um imprevisto confirmado, o motoboy envolvido retorna automaticamente a `DISPONIVEL` (turno continua ativo).  
+> Atributos do pedido: `clienteId`, `lojaId`, `motoboyId`, `estado`, `cancelamentoBloqueado`.
 
 | Ação | Perfil | Condição no recurso |
 | --- | --- | --- |
-| Ver cardápio | `CLIENTE` | Itens não apagados. `PAUSADO_DIA` e `BLOQUEADO` aparecem cinza e não entram no carrinho |
-| Checkout | `CLIENTE` | Só itens `DISPONIVEL`; endereço do próprio usuário; loja `ABERTA` |
+| Ver cardápio | `CLIENTE` | Itens não apagados/arquivados. `PAUSADO_DIA` e `BLOQUEADO` cinza. Quantidade no carrinho limitada ao **restante diário** quando houver teto |
+| Checkout | `CLIENTE` | Só itens `DISPONIVEL`; endereço de entrega (salvo, outro salvo ou novo); forma de pagamento (salva ou nova); loja `ABERTA`; unidades ≤ **restante diário** por produto |
 | Ver pedido | `CLIENTE` | Dono do pedido |
 | Ver pedido | `GERENTE_LOJA`, `FUNCIONARIO_COZINHA` | Mesma loja |
 | Ver pedido | `MOTOBOY` | Alocado a ele, ou pedido `PRONTO` da mesma loja (fila) |
-| Aceitar (inicia o preparo) e marcar pronto | `GERENTE_LOJA`, `FUNCIONARIO_COZINHA` | Mesma loja. Aceitar só a partir de `RECEBIDO`. Sem ação de recusar |
-| Pausar para o dia / bloquear / reativar item | `GERENTE_LOJA`, `FUNCIONARIO_COZINHA` | Item da loja |
+| Preparar / concluir preparo | `GERENTE_LOJA`, `FUNCIONARIO_COZINHA` | Mesma loja. **Preparar** só de `RECEBIDO`; **Concluir preparo** só de `EM_PREPARO`. Qualquer pedido da lista (não só a cabeça). Sem ação de recusar |
+| Pausar para o dia / bloquear / reativar item | `GERENTE_LOJA` | Item da loja. Falta de insumo (cozinha avisou): **gerente** aplica `PAUSADO_DIA` |
+| Ajustar limite diário (padrão ou efetivo de hoje) | `GERENTE_LOJA` | Produto da loja |
 | Arquivar / desarquivar / apagar produto | `GERENTE_LOJA` | Arquivar: oculta de clientes e cozinha, permanece no banco. Apagar: exclusão física; linhas de pedido antigo guardam cópia do nome e do preço |
-| Gerir usuários da loja, horário, zonas, fechar em emergência | `GERENTE_LOJA` | Recurso da loja |
-| Assumir e sair | `MOTOBOY` | Mesma loja, `PRONTO`, sem motoboy, motoboy ativo. Transição direta para `SAIU_PARA_ENTREGA` |
-| Confirmar entrega | `MOTOBOY` | `SAIU_PARA_ENTREGA` alocado a ele |
+| Gerir **funcionários**, horário, taxa de entrega fixa, fechar em emergência | `GERENTE_LOJA` | Recurso da loja |
+| Cadastrar cozinha ou motoboy | `GERENTE_LOJA` | Sem autocadastro; senha definida pelo funcionário no fluxo presencial |
+| Resetar senha de funcionário | `GERENTE_LOJA` | Cozinha ou motoboy da loja; funcionário presente digita a nova senha |
+| Assumir / aceitar entrega | `MOTOBOY` | UI **Aceitar pedido** — `POST /orders/{id}/take`. Mesma loja, `PRONTO`, sem motoboy, turno ativo → `SAIU_PARA_ENTREGA` |
+| Finalizar entrega | `MOTOBOY` | `SAIU_PARA_ENTREGA` alocado a ele |
 | Reportar imprevisto em rota | `MOTOBOY` | `SAIU_PARA_ENTREGA` alocado a ele |
 | Cancelar | `CLIENTE` | Dono; estado `RECEBIDO`; `cancelamentoBloqueado = false` |
 | Cancelar um pedido específico | `GERENTE_LOJA` | Mesma loja; `RECEBIDO`, `EM_PREPARO` ou `PRONTO` sem motoboy; estorna. Não é o fechamento da loja |
 | Acionar imprevisto em rota | `GERENTE_LOJA` | `SAIU_PARA_ENTREGA`. Sem estorno. Mesmo pedido volta a `RECEBIDO` com prioridade na fila da cozinha |
 | Ver links de navegação (Waze / Maps) | `MOTOBOY` | Alocado ao pedido; estado `SAIU_PARA_ENTREGA` |
 | Ver telefone do cliente (link WhatsApp) | `MOTOBOY` | Alocado ao pedido; estado `SAIU_PARA_ENTREGA`. Campo `users.phone` do cliente |
-| Ver telefone do motoboy (link WhatsApp) | `CLIENTE` | Dono do pedido; estado `SAIU_PARA_ENTREGA`. Campo `users.phone` do motoboy |
-
+| Ver link WhatsApp da loja | `CLIENTE` | Tela **nos contacte** ou timeline — `GET /store/contact-links` / `contact-links.store` |
+| Ver link WhatsApp do motoboy | `CLIENTE` | Dono do pedido; estado `SAIU_PARA_ENTREGA` — `contact-links.motoboy` |
 
 FGAC no domínio Spring (`PedidoPolicy`, `CatalogoPolicy`, `UsuarioPolicy`): `@PreAuthorize` no controller, checagem no serviço de aplicação, e os `_links` HATEOAS saem da **mesma** policy. O gateway autentica a sessão; não decide permissão de recurso.
 
@@ -136,7 +131,7 @@ stateDiagram-v2
     [*] --> RECEBIDO: checkout
     RECEBIDO --> EM_PREPARO: cozinha aceita e inicia o preparo
     EM_PREPARO --> PRONTO: finaliza preparo
-    PRONTO --> SAIU_PARA_ENTREGA: motoboy assume e sai
+    PRONTO --> SAIU_PARA_ENTREGA: motoboy aceita no app (take)
     SAIU_PARA_ENTREGA --> ENTREGUE: confirmação de entrega
     RECEBIDO --> CANCELADO: cliente ou gerente
     EM_PREPARO --> CANCELADO: somente gerente
@@ -146,7 +141,7 @@ stateDiagram-v2
 
 Não existe estado `RECUSADO`. Não existe timeout que cancele o pedido na cozinha.
 
-Imprevisto em rota (`FLUX-SAD-18-rota-gerente`, `FLUX-SAD-19-rota-motoboy`): o pedido **não** vira um segundo pedido. Volta para `RECEBIDO` com `priority = true` — aparece no topo da fila do KDS com indicador ⚡, antes de outros `RECEBIDO`, depois de qualquer `EM_PREPARO` já em andamento. O gerente define uma mensagem para o cliente; o sistema a exibe na timeline do pedido em tempo real. O cliente vê o estado voltar a `RECEBIDO` e não pode cancelar (`cancelamentoBloqueado = true`). O KDS mostra os itens sem nome do cliente. O lanche descartado é registrado na auditoria. O pagamento permanece `CONFIRMADO`.
+Imprevisto em rota (`FLUX-SAD-18-rota-gerente`, `FLUX-SAD-19-rota-motoboy`): motoboy **contata o gerente**; o gerente **aciona imprevisto** — o pedido **não** vira um segundo pedido. Volta para `RECEBIDO` com `priority = true` (⚡ no KDS). Mensagem ao cliente na timeline; `cancelamentoBloqueado = true`. **Descarte/devolução física dos itens não é registrada no sistema.** Pagamento permanece `CONFIRMADO`.
 
 O cliente só cancela em `RECEBIDO`, enquanto o pedido ainda está na fila da cozinha. Aceitar leva direto a `EM_PREPARO` e fecha essa janela.
 
@@ -155,12 +150,12 @@ O cliente só cancela em `RECEBIDO`, enquanto o pedido ainda está na fila da co
 ```mermaid
 stateDiagram-v2
     [*] --> DISPONIVEL: gerente cadastra
-    DISPONIVEL --> PAUSADO_DIA: cozinha ou gerente
-    PAUSADO_DIA --> DISPONIVEL: reativação manual ou meia-noite
-    DISPONIVEL --> BLOQUEADO: cozinha ou gerente
-    BLOQUEADO --> DISPONIVEL: reativação manual
-    PAUSADO_DIA --> BLOQUEADO: cozinha ou gerente
-    BLOQUEADO --> PAUSADO_DIA: cozinha ou gerente
+    DISPONIVEL --> PAUSADO_DIA: gerente
+    PAUSADO_DIA --> DISPONIVEL: gerente reativa ou meia-noite
+    DISPONIVEL --> BLOQUEADO: gerente
+    BLOQUEADO --> DISPONIVEL: gerente reativa
+    PAUSADO_DIA --> BLOQUEADO: gerente
+    BLOQUEADO --> PAUSADO_DIA: gerente
     DISPONIVEL --> ARQUIVADO: só o gerente
     PAUSADO_DIA --> ARQUIVADO: só o gerente
     BLOQUEADO --> ARQUIVADO: só o gerente
@@ -174,12 +169,12 @@ stateDiagram-v2
 | Estado | Quem muda | No dia seguinte | Cliente vê? | Cozinha vê? | O que o cliente vê |
 | --- | --- | --- | --- | --- | --- |
 | `DISPONIVEL` | — | Continua | ✅ | ✅ | Item normal, pode pedir |
-| `PAUSADO_DIA` | Cozinha ou gerente | Volta sozinho a `DISPONIVEL` | ✅ | ✅ | Cinza. "Não está sendo produzido hoje." Não entra no carrinho |
-| `BLOQUEADO` | Cozinha ou gerente | Não muda | ✅ | ✅ | Cinza. "Indisponível no momento." Não entra no carrinho |
+| `PAUSADO_DIA` | **Gerente** | Volta sozinho a `DISPONIVEL` | ✅ | ❌ (KDS não gerencia cardápio) | Cinza. "Não está sendo produzido hoje." Não entra no carrinho |
+| `BLOQUEADO` | **Gerente** | Não muda | ✅ | ❌ | Cinza. "Indisponível no momento." Não entra no carrinho |
 | `ARQUIVADO` | **Só o gerente** | Não muda | ❌ | ❌ | Não aparece. Gerente vê em seção "Itens arquivados" |
 | Apagado (física) | Só o gerente | Não existe | ❌ | ❌ | Some definitivamente do banco |
 
-`PAUSADO_DIA` e `BLOQUEADO` continuam visíveis (cinza) no cardápio do cliente e na lista da cozinha — o cliente sabe que o produto existe mas não está disponível. `ARQUIVADO` some de todas as interfaces exceto a seção de gerenciamento do gerente — o cliente não tem ciência da existência do item. Exclusão física é permanente e não pode ser desfeita.
+`PAUSADO_DIA` e `BLOQUEADO` continuam visíveis (cinza) no cardápio do cliente — o cliente sabe que o produto existe mas não está disponível. A cozinha **não** altera esses estados; só o gerente, no **Cardápio** do `web-operacao`. `ARQUIVADO` some de todas as interfaces exceto a seção de gerenciamento do gerente — o cliente não tem ciência da existência do item. Exclusão física é permanente e não pode ser desfeita.
 
 A linha do pedido guarda `product_name` e `unit_price` no momento do checkout. Apagar o produto não apaga o histórico.
 
@@ -208,7 +203,7 @@ stateDiagram-v2
 
 Checkout feliz: `Pedido.RECEBIDO` e `Pagamento.CONFIRMADO` no mesmo `@Transactional`. Simulação falha: rollback completo. Imprevisto em rota não estorna.
 
-**Operações atômicas:** checkout (item `DISPONIVEL` + loja `ABERTA` + taxa da zona + pedido + snapshot do item + pagamento + auditoria); alocação do motoboy; cancelamento com estorno; voltar de `SAIU_PARA_ENTREGA` para `RECEBIDO` no imprevisto; marcar pronto.
+**Operações atômicas:** checkout (item `DISPONIVEL` + loja `ABERTA` + taxa de entrega fixa + pedido + snapshot do item + pagamento simulado + caps diários); alocação do motoboy; cancelamento com estorno; voltar de `SAIU_PARA_ENTREGA` para `RECEBIDO` no imprevisto; marcar pronto.
 
 **Concorrência:** lock otimista (`version`) nos agregados; `SELECT … FOR UPDATE` na alocação; `Idempotency-Key` em checkout, alocar, cancelar e simulação de pagamento.
 

@@ -42,7 +42,7 @@ Se não há perspectiva de motoboy disponível em tempo razoável, o gerente pod
 | 3 | Sistema | Muda o status para `CANCELADO` e inicia o estorno (`CONFIRMADO → ESTORNADO`) |
 | 4 | Sistema | Envia evento WebSocket ao cliente: pedido cancelado com o motivo informado |
 | 5 | 👤 Cliente | Vê na timeline: *"Pedido cancelado — [motivo]"* e recebe o estorno |
-| 6 | 🔑 Gerente | O cancelamento fica registrado na auditoria com responsável e motivo |
+| 6 | 🔑 Gerente | Cancelamento registrado no pedido (motivo visível no painel) |
 
 > O gerente pode cancelar `PRONTO` **com ou sem** motoboy associado (sem motoboy é exatamente este cenário). Ver [ORD-01](../../docTecnica/ORD-01-estados-pedido.md) §2.
 

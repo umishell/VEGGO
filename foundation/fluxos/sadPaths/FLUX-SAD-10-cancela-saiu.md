@@ -18,7 +18,7 @@ Lanche a caminho → cliente não pode mais cancelar → pedido segue até a ent
 
 | # | Quem | O que acontece |
 |---|------|----------------|
-| 1 | 🛵 Motoboy | Clicou **Assumir e sair** — pedido foi direto para `SAIU_PARA_ENTREGA` (assumir e sair são um único passo) |
+| 1 | 🛵 Motoboy | Clicou **Aceitar pedido** — pedido em `SAIU_PARA_ENTREGA` |
 | 2 | 👤 Cliente | Tenta cancelar o pedido pelo app |
 | 3 | Sistema | Bloqueio total — sem opção de cancelamento |
 | 4 | 👤 Cliente | Vê: **"Pedido a caminho — cancelamento não é possível neste momento."** |

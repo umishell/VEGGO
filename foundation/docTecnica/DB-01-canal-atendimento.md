@@ -25,7 +25,34 @@ O app não implementa chat interno. Todos os contatos entre cliente, motoboy e l
 
 ---
 
-## 3. Endpoint unificado de links
+## 3. Endpoints de links
+
+### 3.1 Loja — contato geral (sem pedido)
+
+Usado na tela **nos contacte** / **Fale conosco** do `app-cliente` (menu ou perfil).
+
+```
+GET /store/contact-links
+Authorization: Bearer {token}   // CLIENTE
+```
+
+**Resposta:**
+
+```json
+{
+  "storeWhatsApp": "https://wa.me/5511999990000?text=Ol%C3%A1%2C+preciso+de+ajuda+com+um+pedido+no+app+VEGGO."
+}
+```
+
+| Regra | Detalhe |
+|-------|---------|
+| Fonte | `stores.whatsapp_number` da loja única do MVP |
+| Sem número | HTTP 200 com corpo vazio ou flag `storeWhatsApp: null` — UI mostra “Contato indisponível” |
+| Cache | App pode cachear até logout; gerente alterar número invalida na próxima abertura da tela |
+
+> Alternativa equivalente: `GET /stores/current` incluir `_links.storeWhatsApp` (HATEOAS). MVP: endpoint dedicado ou campo no recurso loja pública do cliente.
+
+### 3.2 Pedido — loja + motoboy (acompanhamento)
 
 ```
 GET /orders/{orderId}/contact-links

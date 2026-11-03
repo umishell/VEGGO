@@ -1,5 +1,5 @@
 # FLUX-HAPPY-17-whatsapp
-### Fale Conosco e contatos de entrega — redirecionamento para WhatsApp
+### nos contacte, Fale conosco e WhatsApp na entrega
 
 **Perfis:** 👤 🛵
 
@@ -8,84 +8,91 @@
 ---
 
 **Perfis:** 👤 Cliente · 🛵 Motoboy  
-**Contextos:** Três situações distintas, com links diferentes.
 
-| # | Contexto | Quem aciona | Visível quando |
-|---|----------|-------------|----------------|
-| 1 | **Cliente → Loja (geral)** | Botão 💬 Fale com a loja no dashboard ou tela do pedido | Sempre |
-| 2 | **Cliente → Loja (imprevisto)** | Botão 💬 Fale com a loja dentro do aviso ⚡ de imprevisto | Imprevisto ativo |
-| 3 | **Cliente → Motoboy** | Botão 🛵 Contatar motoboy na timeline do pedido | Só em `SAIU_PARA_ENTREGA` |
-| 4 | **Motoboy → Cliente** | Botão 💬 WhatsApp do cliente na tela de entrega ativa | Só em `SAIU_PARA_ENTREGA` |
+O app **não** tem chat interno. Todos os atalhos abrem o **WhatsApp** (ou apps de mapa, no motoboy) com link montado pelo backend.
+
+| Onde no app | Botão (rótulo sugerido) | Endpoint |
+|-------------|-------------------------|----------|
+| Menu **nos contacte** / **Fale conosco** | 💬 **WhatsApp da loja** | `GET /store/contact-links` |
+| **Acompanhar pedido** (timeline) | 💬 **Fale com a loja** | `GET /orders/{id}/contact-links` → `store` |
+| **Acompanhar pedido** em `SAIU_PARA_ENTREGA` | 🛵 **WhatsApp do motoboy** | `GET /orders/{id}/contact-links` → `motoboy` |
+| Tela do motoboy em rota | 💬 **WhatsApp do cliente** | `GET /orders/{id}/contact-links` → `customer` |
 
 ```
-Usuário toca no botão → backend monta link → app abre WhatsApp externo com contexto pré-preenchido
+Usuário toca no atalho → backend devolve wa.me → app abre WhatsApp externo
 ```
 
 ---
 
-## Contexto 1 — Cliente → Loja (contato geral)
+## nos contacte — WhatsApp da loja (sem pedido aberto)
 
 | # | Quem | O que acontece |
 |---|------|----------------|
-| 1 | 👤 Cliente | Toca em **💬 Fale com a loja** no dashboard ou no card de qualquer pedido |
-| 2 | Sistema | Abre `wa.me/[número_loja]` sem texto pré-preenchido |
-| 3 | 👤 Cliente | WhatsApp abre na conversa da loja — digita livremente |
-| 4 | 🔑 Gerente | Recebe e responde pelo WhatsApp, fora do app |
+| 1 | 👤 Cliente | No menu (ou perfil), abre **nos contacte** / **Fale conosco** |
+| 2 | 👤 Cliente | Vê texto de apoio (horário, dúvidas sobre pedido, etc.) |
+| 3 | 👤 Cliente | Toca **💬 WhatsApp da loja** |
+| 4 | Sistema | Chama `GET /store/contact-links` e abre o link retornado |
+| 5 | 👤 Cliente | Conversa com a loja no WhatsApp — fora do app |
+
+> Mesmo número configurado pelo gerente em **Configurações → Loja** (`stores.whatsapp_number`). Ver [FLUX-HAPPY-12-horario](FLUX-HAPPY-12-horario.md) Parte 0.
 
 ---
 
-## Contexto 2 — Cliente → Loja (após imprevisto em rota)
+## Acompanhar pedido — Fale com a loja (sempre)
 
 | # | Quem | O que acontece |
 |---|------|----------------|
-| 1 | 👤 Cliente | Dentro do aviso ⚡ na timeline, toca em **💬 Fale com a loja** |
-| 2 | Sistema | Abre `wa.me/[número_loja]?text=Olá,+tive+um+problema+com+meu+pedido+%23[orderId]...` |
-| 3 | 👤 Cliente | WhatsApp abre com a mensagem de contexto já preenchida (editável) — o gerente já sabe o número do pedido |
+| 1 | 👤 Cliente | Na timeline de **qualquer** pedido ativo ou histórico recente, vê **💬 Fale com a loja** |
+| 2 | Sistema | `GET /orders/{id}/contact-links` → campo `store` |
+| 3 | Sistema | Abre WhatsApp; texto pode incluir `display_number` ou id do pedido (editável) |
+
+Botão **permanece visível** em todos os estados (`RECEBIDO` … `ENTREGUE`).
 
 ---
 
-## Contexto 3 — Cliente → Motoboy (durante a entrega)
+## Acompanhar pedido — WhatsApp do motoboy (só na entrega)
 
 | # | Quem | O que acontece |
 |---|------|----------------|
-| 1 | 👤 Cliente | Na timeline, com pedido em **`SAIU_PARA_ENTREGA`**, toca em **🛵 Contatar motoboy** |
-| 2 | Sistema | Chama `GET /orders/{id}/contact-links` e retorna o link do motoboy |
-| 3 | Sistema | Abre `wa.me/[telefone_motoboy]?text=Olá,+sou+o+cliente+do+pedido+%23[orderId].+Posso+falar?` |
-| 4 | 🛵 Motoboy | Recebe no próprio WhatsApp pessoal — fora do app de delivery |
-| 5 | Sistema | Botão desaparece quando o pedido muda para `ENTREGUE` ou volta a `RECEBIDO` (imprevisto) |
+| 1 | 👤 Cliente | Pedido em **`SAIU_PARA_ENTREGA`** — aparece **🛵 WhatsApp do motoboy** (ou **Contatar motoboy**) |
+| 2 | Sistema | `GET /orders/{id}/contact-links` → campo `motoboy` (só neste estado) |
+| 3 | Sistema | Abre `wa.me/[telefone_motoboy]?text=...` com contexto do pedido |
+| 4 | Sistema | Botão **some** em `ENTREGUE`, cancelamento ou imprevisto (motoboy desvinculado) |
+
+Detalhe na timeline: [FLUX-HAPPY-06-timeline](FLUX-HAPPY-06-timeline.md).
 
 ---
 
-## Contexto 4 — Motoboy → Cliente (durante a entrega)
+## Cliente → Loja após imprevisto ⚡
 
 | # | Quem | O que acontece |
 |---|------|----------------|
-| 1 | 🛵 Motoboy | Na tela de entrega ativa, toca em **💬 WhatsApp do cliente** |
-| 2 | Sistema | Chama `GET /orders/{id}/contact-links` e retorna o link do cliente |
-| 3 | Sistema | Abre `wa.me/[telefone_cliente]?text=Olá+[nome_cliente],+sou+o+motoboy+do+seu+pedido+%23[orderId].+Estou+a+caminho!` |
-| 4 | 👤 Cliente | Recebe no WhatsApp pessoal |
-| 5 | Sistema | Botão desaparece ao clicar em **Confirmar entrega** |
+| 1 | 👤 Cliente | No aviso ⚡ da timeline, toca **Fale com a loja** |
+| 2 | Sistema | Link `store` com mensagem pré-preenchida citando o pedido e o imprevisto |
 
 ---
 
-> **Privacidade:** O número do cliente é visível **somente** ao motoboy alocado ao pedido dele, em `SAIU_PARA_ENTREGA`. O número do motoboy é visível **somente** ao dono do pedido, em `SAIU_PARA_ENTREGA`. O endpoint `contact-links` aplica FGAC antes de retornar os links — qualquer outro perfil ou estado recebe 403.
+## Motoboy → Cliente (durante a entrega)
+
+| # | Quem | O que acontece |
+|---|------|----------------|
+| 1 | 🛵 Motoboy | Na tela de acompanhamento, toca **💬 WhatsApp do cliente** |
+| 2 | Sistema | `GET /orders/{id}/contact-links` → `customer` |
+| 3 | Sistema | Abre WhatsApp com saudação e número do pedido |
 
 ---
 
-> **Sem `whatsapp_number` da loja:** o botão "Fale com a loja" fica oculto. Ver configuração em [FLUX-HAPPY-12-horario](FLUX-HAPPY-12-horario.md) Parte 0.  
-> **Sem telefone do cliente:** o botão "WhatsApp do cliente" fica oculto na tela do motoboy.  
-> **Sem telefone do motoboy:** o botão "Contatar motoboy" fica oculto na timeline do cliente.
+> **Privacidade:** Telefone do motoboy só para o **dono** do pedido em `SAIU_PARA_ENTREGA`. Telefone do cliente só para o **motoboy alocado** no mesmo estado. FGAC no backend — 403 fora dessas condições.
+
+> **Sem `whatsapp_number`:** atalhos da **loja** ocultos ou “Contato indisponível”. **Sem `phone` do motoboy:** botão do motoboy oculto na timeline do cliente.
 
 ---
 
 **Veja também:**  
-→ [FLUX-HAPPY-06-timeline](FLUX-HAPPY-06-timeline.md) — botões de contato na timeline  
-→ [FLUX-HAPPY-05-venda](FLUX-HAPPY-05-venda.md) — atalhos do motoboy na tela de entrega ativa  
-→ [FLUX-SAD-21-aviso-cliente](../sadPaths/FLUX-SAD-21-aviso-cliente.md) — imprevisto e Fale Conosco  
-→ [`../../docTecnica/DB-01-canal-atendimento.md`](../../docTecnica/DB-01-canal-atendimento.md) — links, campos e endpoints
+→ [FLUX-HAPPY-06-timeline](FLUX-HAPPY-06-timeline.md)  
+→ [FLUX-SAD-21-aviso-cliente](../sadPaths/FLUX-SAD-21-aviso-cliente.md)  
+→ [`../../docTecnica/DB-01-canal-atendimento.md`](../../docTecnica/DB-01-canal-atendimento.md)
 
 ---
 
-> 📌 **Nota técnica resumida:**  
-> Todos os links são montados pelo backend. O frontend nunca concatena telefone ou número de pedido diretamente. Endpoint único: `GET /orders/{id}/contact-links` retorna um objeto com os links disponíveis para o perfil autenticado no estado atual do pedido. O parâmetro `context` controla o texto pré-preenchido.  
-> → Detalhes: [`../../docTecnica/DB-01-canal-atendimento.md`](../../docTecnica/DB-01-canal-atendimento.md)
+> 📌 **Nota técnica:** Frontend **nunca** monta `wa.me` manualmente. Loja geral: `GET /store/contact-links`. Por pedido: `GET /orders/{id}/contact-links`.

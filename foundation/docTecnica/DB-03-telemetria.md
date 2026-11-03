@@ -157,16 +157,15 @@ SELECT client_id,
 ### Tela 5 — Operação
 
 ```sql
--- Tempo médio cozinha: EM_PREPARO → PRONTO (exclui refazimentos; usa remake_seq=0 para ciclo principal)
--- Nota: filtra por occurred_at no dia operacional alvo
-SELECT AVG(EXTRACT(EPOCH FROM (e_pronto.occurred_at - e_preparo.occurred_at)) / 60) AS avg_kitchen_minutes
-  FROM order_events e_preparo
-  JOIN order_events e_pronto ON e_pronto.order_id = e_preparo.order_id
-  JOIN orders o ON o.id = e_preparo.order_id
- WHERE e_preparo.new_status = 'EM_PREPARO'
-   AND e_pronto.new_status = 'PRONTO'
-   AND o.store_id = :storeId
-   AND (e_preparo.occurred_at AT TIME ZONE :storeTz)::date BETWEEN :startDate AND :endDate;
+-- Tempo médio cozinha: preferir orders.prep_duration_seconds (ORD-01 § 5.5)
+SELECT AVG(prep_duration_seconds) / 60.0 AS avg_kitchen_minutes
+  FROM orders o
+ WHERE o.store_id = :storeId
+   AND o.prep_duration_seconds IS NOT NULL
+   AND (o.prep_completed_at AT TIME ZONE :storeTz)::date BETWEEN :startDate AND :endDate;
+
+-- Fallback legado via order_events (se prep_duration_seconds nulo em pedidos antigos):
+-- AVG(EXTRACT(EPOCH FROM (e_pronto.occurred_at - e_preparo.occurred_at)) / 60) ...
 
 -- Tempo médio de entrega: SAIU_PARA_ENTREGA → ENTREGUE
 SELECT AVG(EXTRACT(EPOCH FROM (e_entregue.occurred_at - e_saiu.occurred_at)) / 60) AS avg_delivery_minutes
@@ -215,17 +214,75 @@ O gerente recebe os mesmos eventos WebSocket da cozinha e do motoboy, pelo canal
 
 | KDS (cozinha) | Painel do gerente |
 |---------------|-------------------|
-| Mostra só `RECEBIDO` | Mostra todos os estados |
-| Remove o card ao aceitar | Mantém o card, muda cor |
-| Sem filtro | Filtros de estado, motoboy, valor, período |
+| Lista `RECEBIDO` + `EM_PREPARO`; some ao `PRONTO` | Todos os estados do dia permanecem na tabela |
+| Seleção + **Preparar** / **Concluir preparo** | Somente leitura + exceções (cancelar, imprevisto) |
+| Timer por pedido em preparo | Coluna **Tempo preparo** (`prep_duration_seconds`) |
+| — | **Rodapé:** métricas § 6.1 (tempo médio, volume, etc.) |
 
-A listagem inicial traz **todos os pedidos do dia operacional atual** (§ 1.1), ordenados por `created_at` desc. Reabrir após `FECHADA_PROGRAMADA` no mesmo dia **não** muda o recorte — só meia-noite local troca o conjunto.
+A listagem inicial traz **todos os pedidos do dia operacional atual** (§ 1.1), ordenados por `created_at` desc.
 
 ```
 GET /orders?storeId={id}&date=today&page=1&size=50
 ```
 
 `date=today` resolve para a data civil em `stores.timezone`, com o mesmo predicado SQL da § 1.1.
+
+---
+
+## 6. Métricas embutidas (rodapé das telas gerente)
+
+Queries sob demanda; ver também [INF-04 § 5](INF-04-ui-operacao-cliente.md).
+
+### 6.1 Pedidos — painel do dia (`GET /store/stats/orders-summary`)
+
+Parâmetros: `period=today|7d|30d|month` (default `today`), fuso `stores.timezone`.
+
+| Métrica | Definição SQL (conceito) |
+|---------|---------------------------|
+| Pedidos no período | `COUNT(*)` em `orders` por data civil |
+| Média pedidos/dia | Total no intervalo ÷ dias civis no intervalo |
+| Pedidos hoje / semana / mês | Contagens com `(created_at AT TIME ZONE tz)::date` |
+| Tempo médio preparo | `AVG(prep_duration_seconds)` onde not null, mesmo recorte de datas |
+| p95 tempo preparo | Percentil 95 de `prep_duration_seconds` |
+| Tempo médio fila antes preparo | `AVG(prep_started_at - created_at)` para pedidos que chegaram a preparo |
+| Cancelamentos | `COUNT` status `CANCELADO` / total |
+
+```sql
+-- Tempo médio preparo (segundos) — preferir coluna materializada
+SELECT ROUND(AVG(prep_duration_seconds)) AS avg_prep_sec,
+       PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY prep_duration_seconds) AS p95_prep_sec
+  FROM orders
+ WHERE store_id = :storeId
+   AND prep_duration_seconds IS NOT NULL
+   AND (prep_completed_at AT TIME ZONE :storeTz)::date
+       BETWEEN :startDate AND :endDate;
+
+-- Volume por dia civil
+SELECT (created_at AT TIME ZONE :storeTz)::date AS day,
+       COUNT(*) AS orders_count
+  FROM orders
+ WHERE store_id = :storeId
+   AND (created_at AT TIME ZONE :storeTz)::date BETWEEN :startDate AND :endDate
+ GROUP BY 1 ORDER BY 1;
+```
+
+### 6.2 Cardápio — rodapé (`GET /store/stats/catalog`)
+
+| Métrica | Uso |
+|---------|-----|
+| Top N itens por unidades | `order_items` + `ENTREGUE` no período |
+| Top N por receita | Mesma base, `SUM(line_total_cents)` |
+| Itens que bateram limite diário | Join `product_daily_caps` onde `units_sold >= effective_limit` |
+| Mix por categoria | Agrupa por `product_categories.display_name` |
+
+Reutiliza e estende § 2 Tela 3. Período default: **7 dias** no rodapé do cardápio; gerente pode alternar 7d / 30d.
+
+### 6.3 Índice adicional
+
+```sql
+CREATE INDEX idx_orders_prep_completed ON orders(store_id, prep_completed_at)
+  WHERE prep_duration_seconds IS NOT NULL;
+```
 
 ---
 

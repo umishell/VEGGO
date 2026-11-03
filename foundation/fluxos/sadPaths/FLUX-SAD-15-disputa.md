@@ -8,18 +8,18 @@
 ---
 
 **Perfis:** 🛵 Motoboy A · 🛵 Motoboy B
-**Causa:** Dois entregadores clicam em "Assumir" ao mesmo tempo.
+**Causa:** Dois entregadores clicam **Aceitar pedido** ao mesmo tempo.
 
 ```
-Dois motoboys veem o mesmo pedido → um clica "Assumir e sair" → o outro recebe aviso claro
+Dois motoboys veem o mesmo pedido → um clica **Aceitar pedido** → o outro recebe aviso claro
 ```
 
 **Passo a passo:**
 
 | # | Quem | O que acontece |
 |---|------|----------------|
-| 1 | 🛵 Motoboy A | Vê pedido #0042 disponível e clica **Assumir e sair** |
-| 2 | 🛵 Motoboy B | No mesmo instante, clica **Assumir e sair** no mesmo pedido |
+| 1 | 🛵 Motoboy A | Vê pedido disponível e clica **Aceitar pedido** |
+| 2 | 🛵 Motoboy B | No mesmo instante, clica **Aceitar pedido** no mesmo pedido |
 | 3 | Sistema | Processa os dois; o Motoboy A chegou primeiro |
 | 4 | 🛵 Motoboy A | Confirma: **"Pedido #0042 assumido!"** — pedido vai direto para `SAIU_PARA_ENTREGA` |
 | 5 | 🛵 Motoboy B | Recebe: **"Esse pedido já foi assumido por outro motoboy."** |

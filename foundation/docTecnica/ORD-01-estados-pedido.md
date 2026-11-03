@@ -14,15 +14,15 @@ Alinhado a [`pitch_delivery.md`](../pitch_delivery.md). O nome do estado inicial
 | Estado | Descrição | Quem transiciona |
 |--------|-----------|-----------------|
 | `RECEBIDO` | Pedido criado e pago. Já está na fila da cozinha. Ninguém aceitou ainda | Sistema, no checkout |
-| `EM_PREPARO` | Cozinha aceitou o pedido da fila. O preparo começa nesse clique | 👨‍🍳 Cozinha ou 🔑 Gerente |
-| `PRONTO` | Embalado, aguardando motoboy | 👨‍🍳 Cozinha ou 🔑 Gerente |
-| `SAIU_PARA_ENTREGA` | Motoboy assumiu e saiu com o pedido (transição única) | 🛵 Motoboy |
+| `EM_PREPARO` | Cozinha aceitou; itens visíveis no painel direito do KDS para conferência e embalagem | 👨‍🍳 Cozinha ou 🔑 Gerente |
+| `PRONTO` | Preparo concluído; aguardando motoboy no balcão / fila do app | 👨‍🍳 Cozinha ou 🔑 Gerente |
+| `SAIU_PARA_ENTREGA` | Motoboy **aceitou** o pedido no app (após conferir `display_number` na embalagem) | 🛵 Motoboy |
 | `ENTREGUE` | Entrega confirmada | 🛵 Motoboy |
 | `CANCELADO` | Encerrado com estorno, se o pagamento estava confirmado | 👤 Cliente ou 🔑 Gerente, conforme a janela |
 
 Não existe `RECUSADO`, `PENDENTE` nem `ACEITO`. Aceitar o pedido da fila é a transição `RECEBIDO → EM_PREPARO`.
 
-> **Pré-condição para "Assumir e sair":** o motoboy precisa ter turno ativo (`delivery_persons.status = DISPONIVEL`), representado por `motoboyAtivo = true` no JWT. Turno não iniciado (`INATIVO`) bloqueia a ação no servidor. Ver [FLUX-HAPPY-16-turno](../fluxos/happypaths/FLUX-HAPPY-16-turno.md).
+> **Pré-condição para aceite no app motoboy (`POST /orders/{id}/take`):** turno ativo (`motoboyAtivo = true`); pedido `PRONTO` sem motoboy; motoboy confere **`display_number`** na embalagem. UI: botão **Aceitar pedido** → tela de acompanhamento. Ver [FLUX-HAPPY-20-motoboy-app](../fluxos/happypaths/FLUX-HAPPY-20-motoboy-app.md) · INF-04 § 2.
 
 ---
 
@@ -52,7 +52,7 @@ EM_PREPARO ── gerente cancela ─► CANCELADO + estorno
    │
    ▼
 PRONTO ── gerente cancela (sem motoboy) ─► CANCELADO + estorno
-   │ motoboy assume e sai (transição única)
+   │ motoboy aceita no app (take)
    ▼
 SAIU_PARA_ENTREGA ── imprevisto ─► RECEBIDO (mesmo id, priority, cancelamento bloqueado)
    │ entrega
@@ -64,7 +64,7 @@ ENTREGUE
 
 ## 4. Imprevisto em rota
 
-Um único `order_id` para o cliente. A auditoria grava o motivo `IMPREVISTO_ENTREGA`; isso é evento, não um estado permanente.
+Um único `order_id` para o cliente. O motivo `IMPREVISTO_ENTREGA` aparece na **timeline** do pedido; isso é evento, não um estado permanente.
 
 | Campo | Depois do imprevisto |
 |-------|----------------------|
@@ -83,32 +83,80 @@ Um único `order_id` para o cliente. A auditoria grava o motivo `IMPREVISTO_ENTR
 
 O KDS lista os itens desse `remake_seq` sem nome, telefone ou endereço do cliente. O endereço segue no pedido para o próximo motoboy.
 
-**Regra de destino dos itens após imprevisto em rota:**
+**Itens físicos (fora do sistema):** após o imprevisto, o motoboy **contata o gerente** (WhatsApp, telefone ou reporte no app). O gerente **não** marca no sistema o que foi descartado ou devolvido. Na prática: descarta comida que não volta, devolve depois itens duráveis (ex.: bebidas lacradas) **presencialmente** — decisão operacional, sem campos `DISCARDED`, pendência de devolução ou `item_type` no MVP.
 
-A classificação usa `products.item_type` (definido pelo gerente no cadastro do produto):
-
-| `item_type` | Exemplos | Destino | Como o gerente acompanha |
-|-------------|----------|---------|--------------------------|
-| `PREPARED_FOOD` | Lanche, batata, sobremesa | **Descartados** — fora da loja, não retornam. Auditoria registra `ITEM_DISCARDED` por `order_id + remake_seq` | Detalhe do pedido no painel — linha por item com status `DISCARDED` |
-| `SEALED_BEVERAGE` | Lata, garrafa | **Pendência de devolução** — `order_events` registra `BEVERAGE_RETURN_PENDING` com `order_id`, `motoboy_id` e lista de itens pendentes | Detalhe do pedido no painel — badge "Devolução pendente". Quando o motoboy devolve pessoalmente, o gerente clica **Devolução recebida** gravando `BEVERAGE_RETURN_CONFIRMED` |
-
-O gerente **não precisa de tela separada**: o detalhe do pedido (acessível pelo painel do dia, `FLUX-HAPPY-18-painel`) mostra os itens com seus status e o botão de confirmar devolução quando houver pendência. Não há módulo de estoque — é apenas registro de auditoria.
+O gerente só **aciona imprevisto** no painel: mesmo `order_id` → `RECEBIDO` + `priority = true` + mensagem ao cliente. A cozinha refaz conforme as linhas do pedido no KDS.
 
 Quando o mesmo pedido chega a `ENTREGUE`, `incident_alert` volta a `false`.
 
 ---
 
-## 5. Timeout
+## 5. Fila do KDS — ordem, seleção e vários preparos
 
-| Situação | Efeito |
+Pedidos **`RECEBIDO`** e **`EM_PREPARO`** aparecem na **lista esquerda** do KDS até irem a **`PRONTO`**. A cozinha pode ter **vários** pedidos `EM_PREPARO` ao mesmo tempo.
+
+**Seleccionar ≠ preparar:** clicar numa linha só abre o **detalhe à direita**. Nenhum pedido entra em preparo automaticamente (nem o primeiro da fila).
+
+### 5.1 Ordenação da lista KDS
+
+| Critério | Ordem |
 |----------|--------|
-| Cozinha não tira o pedido da fila | Permanece `RECEBIDO`. Depois de `accept_alert_minutes` o gerente recebe alerta |
+| `priority` | `true` antes de `false` (⚡ imprevisto) |
+| Entre iguais | `created_at ASC` (ordem de chegada) |
 
-O prazo `accept_alert_minutes` fica na tabela `stores`. Não existe timeout que cancele o pedido automaticamente — apenas alerta.
+Inclui pedidos `RECEBIDO` e `EM_PREPARO`. Ao concluir (`→ PRONTO`), o pedido **some** da lista e do detalhe da cozinha.
+
+### 5.2 Iniciar e concluir preparo
+
+| Ação (UI detalhe, canto **superior esquerdo**) | Estado | Efeito |
+|------------------------------------------------|--------|--------|
+| **Preparar** | `RECEBIDO` | `→ EM_PREPARO`; timeline cliente **Em preparo**; grava `prep_started_at`; inicia **timer** no detalhe; estilo da linha na lista + painel direito muda (borda/cor “em preparo”); botão esquerdo some |
+| **Concluir preparo** (canto **superior direito**) | `EM_PREPARO` | `→ PRONTO`; para timer; grava `prep_completed_at` e `prep_duration_seconds`; pedido some do KDS; fila motoboy |
+
+| Regra | Detalhe |
+|-------|---------|
+| Qual pedido preparar | Qualquer `RECEBIDO` **selecionado** — **não** exige ser o primeiro da lista |
+| Alternar pedidos | Clicar outra linha na lista → detalhe à direita troca de pedido (timer e botões do pedido selecionado) |
+| Servidor | Rejeita **Preparar** se status ≠ `RECEBIDO`; rejeita **Concluir** se status ≠ `EM_PREPARO` (`INVALID_STATE`) |
+
+Protocolo STOMP: INF-02 § 4 (`/accept` → preparar, `/ready` → concluir).
+
+### 5.3 Timer de preparo (cozinha)
+
+| Regra | Detalhe |
+|-------|---------|
+| Onde | Centro **superior** do painel de detalhe (direita) |
+| Quando corre | Enquanto pedido `EM_PREPARO` e timer não congelado |
+| Origem | `prep_started_at` (servidor) — UI atualiza a cada segundo |
+| Ao concluir | Timer **congela** no valor final; persiste em `orders.prep_duration_seconds` |
+
+### 5.4 Tabela `orders` — tempo de preparo
+
+| Coluna | Tipo | Regra |
+|--------|------|--------|
+| `prep_started_at` | `timestamptz`, nulo | Preenchido em `RECEBIDO → EM_PREPARO` |
+| `prep_completed_at` | `timestamptz`, nulo | Preenchido em `EM_PREPARO → PRONTO` |
+| `prep_duration_seconds` | int, nulo | Segundos congelados ao concluir: `prep_completed_at - prep_started_at` (arredondamento inteiro para cima no MVP) |
+
+### 5.5 KDS — painéis (resumo)
+
+| Painel | Conteúdo |
+|--------|----------|
+| Esquerda | Linhas `RECEBIDO` + `EM_PREPARO`; contador; seleção por clique (destaque visual) |
+| Direita | Detalhe do **selecionado**: `display_number`, timer (se `EM_PREPARO`), linhas `order_items`, **Preparar** (↖) / **Concluir preparo** (↗) |
+| Embalagem | Anotar `display_number` antes de concluir |
+
+Layout: [INF-04-ui-operacao-cliente.md](INF-04-ui-operacao-cliente.md) § 1.
 
 ---
 
-## 6. Pagamento
+## 6. Timeout (resumo)
+
+Pedidos `RECEBIDO` permanecem na fila **indefinidamente** até a cozinha clicar **Preparar** ou até cancelamento manual. **Não** há alerta automático ao gerente por demora na cozinha nem timeout que cancele o pedido.
+
+---
+
+## 7. Pagamento
 
 | Evento | Pagamento |
 |--------|-----------|
@@ -119,7 +167,9 @@ O prazo `accept_alert_minutes` fica na tabela `stores`. Não existe timeout que 
 
 ---
 
-## 7. Auditoria — `order_events`
+## 8. Timeline do pedido — `order_events`
+
+Persistência **técnica** para a timeline do cliente, mensagens de imprevisto e algumas métricas (DB-03). **Não** há tela ou módulo de “auditoria” no produto.
 
 | Campo | Tipo |
 |-------|------|
@@ -133,7 +183,7 @@ O prazo `accept_alert_minutes` fica na tabela `stores`. Não existe timeout que 
 
 Índices: `order_id`, `occurred_at DESC`.
 
-A linha do pedido (`order_items`) guarda `product_name` e `unit_price` copiados no checkout.
+A linha do pedido (`order_items`) guarda `product_name`, `unit_price`/`unit_price_cents` e `quantity` copiados no checkout. Ver [DB-04-catalogo-checkout-cliente.md](DB-04-catalogo-checkout-cliente.md).
 
 ---
 

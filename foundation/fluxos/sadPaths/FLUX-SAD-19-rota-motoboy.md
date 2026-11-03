@@ -49,12 +49,10 @@ Motoboy saiu → imprevisto → reporta no app → gerente recebe alerta
 
 ---
 
-**Protocolo de imprevisto — destino dos itens:**
+**Itens físicos (fora do app):**
 
-| Item | O que acontece |
-|------|----------------|
-| 🍔 Alimentos preparados (lanche, batata, sobremesa etc.) | **Descartados** — fora da loja, não retornam. Auditoria registra `ITEM_DISCARDED` |
-| 🥤 Bebidas em embalagem fechada | **Pendência de devolução** — motoboy devolve pessoalmente; gerente confirma no detalhe do pedido |
+Motoboy **contata o gerente** (reporte no app, WhatsApp ou telefone). O gerente **aciona refazimento** no painel; não há tela de “devolução recebida” nem status por item. Descarte/devolução física é acordada fora do sistema.
+
 | 🔄 Pedido | Mesmo `order_id`, `RECEBIDO` com `priority = true` — topo da fila do KDS com ⚡ |
 | 🛵 Fila | Quando `PRONTO`, qualquer motoboy disponível pode assumir |
 

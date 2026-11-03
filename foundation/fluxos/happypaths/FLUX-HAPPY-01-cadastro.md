@@ -28,6 +28,8 @@ Cliente abre o app pela primeira vez
 | 5 | Sistema | Valida os dados, cria a conta e faz login automático |
 | 6 | 👤 Cliente | É redirecionado direto para o **cardápio** — já logado |
 
+> 💡 **Somente o cliente** se cadastra sozinho neste app. Cozinha e motoboy são cadastrados pelo gerente: [FLUX-HAPPY-13-usuarios](FLUX-HAPPY-13-usuarios.md).
+
 > 💡 Na próxima vez que abrir o app, o cliente já estará logado automaticamente (sessão ativa).
 
 > 📞 O **telefone** é usado exclusivamente para o motoboy entrar em contato durante a entrega. Fica visível ao motoboy apenas enquanto o pedido estiver em `SAIU_PARA_ENTREGA`. Não é exibido publicamente.

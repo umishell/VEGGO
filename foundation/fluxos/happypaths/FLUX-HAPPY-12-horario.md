@@ -24,7 +24,8 @@ Gerente configura horários semanais e/ou intervalos especiais
 | 0a | 🔑 Gerente | Acessa **Configurações → Loja** |
 | 0b | 🔑 Gerente | Informa ou atualiza o **número de WhatsApp** da loja (campo obrigatório; formato: `5511999999999`) |
 | 0c | 🔑 Gerente | Informa ou atualiza o **fuso horário** da loja (ex.: `America/Sao_Paulo`) |
-| 0d | Sistema | Salva em `stores.whatsapp_number` e `stores.timezone`. A partir daí o botão Fale Conosco usa esse número |
+| 0d | 🔑 Gerente | Define **Taxa de entrega (valor fixo)** — valor em reais adicionado a **todo** pedido no checkout (`stores.fixed_delivery_fee_cents`). Não depende de CEP nem bairro |
+| 0e | Sistema | Salva `whatsapp_number`, `timezone` e `fixed_delivery_fee_cents`. Cliente vê a taxa no checkout/carrinho via `GET /menu`; pedidos gravam snapshot em `orders.delivery_fee_cents` |
 
 > ⚠️ Sem `whatsapp_number` preenchido, o botão **Fale Conosco** não aparece no app do cliente (ou exibe aviso de "suporte indisponível"). O número deve ser configurado antes do primeiro pedido.
 

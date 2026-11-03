@@ -19,8 +19,9 @@ Cliente já tem conta → faz login → navega pelo cardápio
 |---|------|----------------|
 | 1 | 👤 Cliente | Abre o app, vê a tela de login |
 | 2 | 👤 Cliente | Digita e-mail e senha, clica **Entrar** |
+| 2a | 👤 Cliente | *(alternativa)* **Esqueci minha senha** → [FLUX-HAPPY-02-recuperacao-senha](FLUX-HAPPY-02-recuperacao-senha.md) |
 | 3 | Sistema | Verifica os dados e libera o acesso |
-| 4 | 👤 Cliente | Vê o cardápio organizado por categorias (ex.: Hambúrgueres, Bebidas, Sobremesas) |
+| 4 | 👤 Cliente | Vê o cardápio por categorias ([FLUX-HAPPY-22-cardapio-categorias](FLUX-HAPPY-22-cardapio-categorias.md)) |
 | 5 | 👤 Cliente | Toca em um produto para ver foto, descrição e preço |
 | 6 | 👤 Cliente | Navega à vontade pelas categorias |
 

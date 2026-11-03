@@ -26,7 +26,7 @@ Motoboy saiu → imprevisto → gerente detecta → aciona refazimento com prior
 | 2 | 🛵 Motoboy | Imprevisto acontece. Não consegue entregar nem devolver os itens à loja |
 | 3 | 🔑 Gerente | Percebe o problema: cliente reclama, tempo de entrega passou, ou contato externo (ligação do motoboy, notificação) |
 | 4 | 🔑 Gerente | Abre o painel → localiza o pedido → clica em **Acionar imprevisto** |
-| 5 | 🔑 Gerente | Preenche o motivo (campo obrigatório — fica na auditoria) e opcionalmente edita a mensagem para o cliente |
+| 5 | 🔑 Gerente | Preenche o motivo (campo obrigatório — aparece na timeline do pedido) e opcionalmente edita a mensagem para o cliente |
 | 6 | 🔑 Gerente | Confirma a ação |
 | 7 | Sistema | Muda o pedido: `status = RECEBIDO`, `priority = true`, `incident_alert = true`, `incident_message` gravado, `motoboy_id = null`, `cancelamento_bloqueado = true`, `remake_seq++` |
 | 8 | Sistema | O pedido aparece no **topo da fila do KDS** com indicador ⚡, antes de outros `RECEBIDO`, depois de qualquer `EM_PREPARO` já em andamento |
@@ -47,12 +47,10 @@ Motoboy saiu → imprevisto → gerente detecta → aciona refazimento com prior
 
 ---
 
-**Protocolo de imprevisto — destino dos itens:**
+**Itens físicos (fora do app):**
 
-| Item | O que acontece |
-|------|----------------|
-| 🍔 Alimentos preparados (lanche, batata, sobremesa etc.) | **Descartados** — fora da loja, não retornam. Auditoria registra `ITEM_DISCARDED` |
-| 🥤 Bebidas em embalagem fechada | **Pendência de devolução** — o motoboy devolve pessoalmente; gerente confirma no detalhe do pedido. Evento `BEVERAGE_RETURN_PENDING` na auditoria |
+O sistema **não** registra descarte nem devolução linha a linha. Motoboy e gerente combinam (WhatsApp, telefone ou presencial): descartar comida que não volta, devolver depois itens duráveis à loja quando possível. O app só recoloca o pedido na fila da cozinha com ⚡.
+
 | 🔄 Pedido | Mesmo `order_id`, `RECEBIDO` com `priority = true` — topo da fila do KDS com ⚡ |
 | 🛵 Próximo motoboy | Quando `PRONTO`, qualquer motoboy disponível pode assumir normalmente |
 
@@ -69,7 +67,7 @@ O pedido fica em `RECEBIDO` com prioridade. `cancelamento_bloqueado` impede **so
 
 ---
 
-> **Impacto:** Muito alto. Atraso significativo, custo de produto (lanche descartado) e retrabalho da cozinha. Toda ação fica registrada na auditoria com responsável, horário e motivo.
+> **Impacto:** Muito alto. Atraso significativo, custo de produto (lanche descartado) e retrabalho da cozinha. Motivo e mensagem ficam visíveis na timeline do pedido e no detalhe do painel.
 
 ---
 

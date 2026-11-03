@@ -1,7 +1,7 @@
 # INF-02 — HTTP vs WebSocket: Protocolo por Transição de Estado
 
 **Referenciado por:**  
-→ [FLUX-HAPPY-05-venda](../fluxos/happypaths/FLUX-HAPPY-05-venda.md) · [FLUX-HAPPY-06-timeline](../fluxos/happypaths/FLUX-HAPPY-06-timeline.md) · [FLUX-HAPPY-18-painel](../fluxos/happypaths/FLUX-HAPPY-18-painel.md)  
+→ [FLUX-HAPPY-05-venda](../fluxos/happypaths/FLUX-HAPPY-05-venda.md) · [FLUX-HAPPY-06-timeline](../fluxos/happypaths/FLUX-HAPPY-06-timeline.md) · [FLUX-HAPPY-09-item-novo](../fluxos/happypaths/FLUX-HAPPY-09-item-novo.md) · [FLUX-HAPPY-10-item-gerente](../fluxos/happypaths/FLUX-HAPPY-10-item-gerente.md) · [FLUX-HAPPY-18-painel](../fluxos/happypaths/FLUX-HAPPY-18-painel.md) · [FLUX-HAPPY-22-cardapio-categorias](../fluxos/happypaths/FLUX-HAPPY-22-cardapio-categorias.md)  
 → [FLUX-SAD-18-rota-gerente](../fluxos/sadPaths/FLUX-SAD-18-rota-gerente.md) · [FLUX-SAD-19-rota-motoboy](../fluxos/sadPaths/FLUX-SAD-19-rota-motoboy.md) · [FLUX-SAD-21-aviso-cliente](../fluxos/sadPaths/FLUX-SAD-21-aviso-cliente.md)
 
 *[← Índice docTecnica](README.md)*
@@ -35,29 +35,28 @@ Ou seja: **vários perfis abrem WebSocket**, mas **só a cozinha manda comandos 
 | Transição | Ator | Protocolo da ação | Canais WebSocket publicados |
 |-----------|------|-------------------|-----------------------------|
 | → `RECEBIDO` (checkout) | Cliente | HTTP POST `/orders` | `kitchen:{storeId}` |
-| → `EM_PREPARO` (aceitar) | Cozinha | **WebSocket** `@MessageMapping /orders/{id}/accept` | `order:{orderId}` · `kitchen:{storeId}` |
-| → `PRONTO` (marcar pronto) | Cozinha | **WebSocket** `@MessageMapping /orders/{id}/ready` | `order:{orderId}` · `kitchen:{storeId}` · `delivery:{storeId}` |
-| → `SAIU_PARA_ENTREGA` (assumir e sair) | Motoboy | **HTTP POST** `/orders/{id}/take` + `Idempotency-Key` | `order:{orderId}` · `kitchen:{storeId}` · `delivery:{storeId}` |
+| → `EM_PREPARO` (Preparar) | Cozinha | **WebSocket** `@MessageMapping /orders/{id}/accept` | `order:{orderId}` · `kitchen:{storeId}` |
+| → `PRONTO` (Concluir preparo) | Cozinha | **WebSocket** `@MessageMapping /orders/{id}/ready` | `order:{orderId}` · `kitchen:{storeId}` · `delivery:{storeId}` |
+| → `SAIU_PARA_ENTREGA` (aceitar pedido / take) | Motoboy | **HTTP POST** `/orders/{id}/take` + `Idempotency-Key` | `order:{orderId}` · `kitchen:{storeId}` · `delivery:{storeId}` |
 | → `ENTREGUE` (confirmar) | Motoboy | HTTP POST `/orders/{id}/deliver` | `order:{orderId}` · `kitchen:{storeId}` |
 | → `CANCELADO` (cliente) | Cliente | HTTP DELETE `/orders/{id}` | `order:{orderId}` · `kitchen:{storeId}` |
 | → `CANCELADO` (gerente) | Gerente | HTTP POST `/orders/{id}/cancel` | `order:{orderId}` · `kitchen:{storeId}` |
 | → `RECEBIDO` ⚡ (imprevisto) | Gerente | HTTP POST `/orders/{id}/incident` | `order:{orderId}` · `kitchen:{storeId}` · `delivery:{storeId}` |
-| Alerta aceite lento | Sistema (job) | — | `kitchen:{storeId}` |
 
 **Por que a cozinha usa WebSocket para ações de estado:** a KDS mantém conexão aberta durante todo o turno. Enviar ações pelo mesmo canal evita o overhead de abrir nova conexão TCP a cada clique, e se encaixa nativamente no modelo STOMP bidirecional do Spring.
 
-**Por que motoboy usa HTTP para "Assumir e Sair":** essa transição exige `SELECT … FOR UPDATE` numa transação ACID e `Idempotency-Key` no cabeçalho HTTP para garantir que dois motoboys clicando simultaneamente resultem em apenas um vencedor com HTTP 200 e o outro com HTTP 409. WebSocket não oferece semântica de requisição-resposta com status padronizados por mensagem.
+**Por que motoboy usa HTTP para aceitar pedido (`/take`):** lock `SELECT … FOR UPDATE`, Idempotency-Key, HTTP 409 em disputa. UI: **Aceitar pedido** → `SAIU_PARA_ENTREGA` + tela de acompanhamento (INF-04 § 2).
 
 ---
 
 ## 3. Canais STOMP e assinantes
 
-O Sprinmensg WebSocket usa STOMP como protocolo de ageria sobre WebSocket. O Fastify faz proxy do endpoint `/ws` para o Spring (veja INF-01). O broker é in-process — sem broker externo.
+O Spring WebSocket usa STOMP como protocolo de mensageria sobre WebSocket. O Fastify faz proxy do endpoint `/ws` para o Spring (veja INF-01). O broker é in-process — sem broker externo.
 
 | Canal (topic STOMP) | Quem assina | O que chega |
 |---------------------|-------------|-------------|
 | `/topic/order/{orderId}` | Tela de timeline do cliente | Toda mudança de estado do pedido; `incident_alert` + `incidentMessage` |
-| `/topic/kitchen/{storeId}` | KDS da cozinha · Painel do gerente | Novos pedidos `RECEBIDO`; mudanças de estado de qualquer pedido da loja; alertas de aceite lento; eventos de imprevisto |
+| `/topic/kitchen/{storeId}` | KDS da cozinha · Painel do gerente | Novos pedidos `RECEBIDO`; mudanças de estado de qualquer pedido da loja; eventos de imprevisto |
 | `/topic/delivery/{storeId}` | App do motoboy | Pedidos que entram na fila (`PRONTO`); pedidos que saem da fila (`SAIU_PARA_ENTREGA`, `CANCELADO`) |
 
 Publicação no servidor:
@@ -140,16 +139,17 @@ Quando o cliente faz checkout, o Spring:
 }
 ```
 
-Se `priority: true` (imprevisto em rota), o KDS posiciona o card no topo da fila com indicador ⚡.
+Se `priority: true` (imprevisto em rota), o KDS posiciona a linha no topo com indicador ⚡.
+
+**Lista KDS:** pedidos `RECEBIDO` e `EM_PREPARO`, ordenação `priority DESC`, `created_at ASC`. Clique na linha = **seleção** (detalhe à direita); **não** inicia preparo.
 
 ### 4.3 Sentido cozinha → servidor (envio de ações de estado)
 
-A cozinha **não abre nova requisição HTTP** para aceitar ou marcar pronto. Usa `rxStompService.publish()` no mesmo canal já aberto.
+A cozinha **não abre nova requisição HTTP** para preparar ou concluir. Usa `rxStompService.publish()` no mesmo canal já aberto.
 
-**Aceitar pedido (`RECEBIDO → EM_PREPARO`):**
+**Preparar (`RECEBIDO → EM_PREPARO`)** — botão ↖ no detalhe; destino STOMP `/accept`:
 
 ```typescript
-// Angular — KDS component, clique no botão "Aceitar"
 rxStompService.publish({
   destination: '/app/orders/550e8400/accept',
   body: JSON.stringify({ acceptedAt: new Date().toISOString() }),
@@ -157,25 +157,20 @@ rxStompService.publish({
 ```
 
 ```java
-// Spring — @MessageMapping no controller
 @MessageMapping("/orders/{orderId}/accept")
 @Transactional
-public void acceptOrder(@DestinationVariable String orderId,
-                        SimpMessageHeaderAccessor headerAccessor) {
-    Order order = orderRepo.findByIdForUpdate(orderId); // SELECT FOR UPDATE
+public void startPrep(@DestinationVariable String orderId,
+                      SimpMessageHeaderAccessor headerAccessor) {
+    Order order = orderRepo.findByIdForUpdate(orderId);
     if (order.getStatus() != RECEBIDO) {
-        // envia erro de volta para o remetente
-        messagingTemplate.convertAndSendToUser(
-            headerAccessor.getUser().getName(),
-            "/queue/errors",
-            new ErrorPayload("INVALID_STATE", orderId)
-        );
+        sendError(headerAccessor, "INVALID_STATE", orderId);
         return;
     }
+    Instant now = Instant.now();
     order.setStatus(EM_PREPARO);
+    order.setPrepStartedAt(now);
     orderRepo.save(order);
     orderEventRepo.save(new OrderEvent(orderId, RECEBIDO, EM_PREPARO, actorId));
-    // notifica os interessados
     messagingTemplate.convertAndSend("/topic/order/" + orderId,
         new StatusChangedPayload(orderId, EM_PREPARO));
     messagingTemplate.convertAndSend("/topic/kitchen/" + storeId,
@@ -183,7 +178,7 @@ public void acceptOrder(@DestinationVariable String orderId,
 }
 ```
 
-**Marcar pronto (`EM_PREPARO → PRONTO`):**
+**Concluir preparo (`EM_PREPARO → PRONTO`)** — botão ↗; destino `/ready`:
 
 ```typescript
 rxStompService.publish({ destination: '/app/orders/550e8400/ready', body: '{}' });
@@ -193,10 +188,20 @@ rxStompService.publish({ destination: '/app/orders/550e8400/ready', body: '{}' }
 @MessageMapping("/orders/{orderId}/ready")
 @Transactional
 public void markReady(@DestinationVariable String orderId, ...) {
-    // mesma lógica: verifica EM_PREPARO, transiciona para PRONTO
-    // publica para /topic/order/{orderId}
-    //              /topic/kitchen/{storeId}
-    //              /topic/delivery/{storeId}  ← novo pedido na fila do motoboy
+    Order order = orderRepo.findByIdForUpdate(orderId);
+    if (order.getStatus() != EM_PREPARO) {
+        sendError(..., "INVALID_STATE", orderId);
+        return;
+    }
+    Instant now = Instant.now();
+    order.setStatus(PRONTO);
+    order.setPrepCompletedAt(now);
+    if (order.getPrepStartedAt() != null) {
+        order.setPrepDurationSeconds(
+            (int) Duration.between(order.getPrepStartedAt(), now).getSeconds());
+    }
+    orderRepo.save(order);
+    // publica order + kitchen + delivery
 }
 ```
 
@@ -212,7 +217,7 @@ rxStompService.watch('/user/queue/errors').subscribe(msg => {
 
 ### 4.4 Conflito entre dois cozinheiros
 
-Se dois cozinheiros clicarem em "Aceitar" no mesmo pedido quase simultaneamente:
+Se dois cozinheiros clicarem **Preparar** no mesmo pedido quase simultaneamente:
 
 1. O `@MessageMapping` de `accept` executa dentro de `@Transactional` com `SELECT FOR UPDATE`.
 2. O primeiro commita: pedido vai para `EM_PREPARO`.
@@ -246,8 +251,8 @@ WebSocket fecha  ──►  @stomp/rx-stomp detecta onclose
                   ──►  aguarda reconnectDelay (padrão: 3s; pode usar backoff: 3s → 6s → 12s → 30s)
                   ──►  tenta reconectar (novo handshake com cookie JWT)
                   ──►  ✅ conectado
-                  ──►  HTTP GET /orders?storeId={storeId}&status=RECEBIDO,EM_PREPARO,PRONTO
-                       → reconstrói a fila da KDS com estado atual do PostgreSQL
+                  ──►  HTTP GET /orders?storeId={storeId}&status=RECEBIDO,EM_PREPARO
+                       → reconstrói lista KDS + seleção com estado atual do PostgreSQL
                   ──►  re-assina /topic/kitchen/{storeId}
                   ──►  operação normal — cozinheiro não percebeu nada
 ```
@@ -328,15 +333,15 @@ O motoboy combina: assina o canal `delivery:{storeId}` para saber de novos pedid
 |------|-----------|-----------------|
 | Ver fila de pedidos `PRONTO` | WebSocket `/topic/delivery/{storeId}` | Push ao entrar na fila; push ao sair (outro motoboy assumiu) |
 | Iniciar turno | HTTP POST `/delivery-persons/shift/start` | Motoboy entra como disponível |
-| Assumir e Sair | **HTTP POST** `/orders/{id}/take` + `Idempotency-Key` | `SELECT … FOR UPDATE` — HTTP 200 (ganhou) ou 409 (outro ganhou) |
+| Aceitar pedido | **HTTP POST** `/orders/{id}/take` + `Idempotency-Key` | `SELECT … FOR UPDATE` — HTTP 200 ou 409 |
 | Confirmar entrega | HTTP POST `/orders/{id}/deliver` | `SAIU_PARA_ENTREGA → ENTREGUE` |
 | Reportar imprevisto | HTTP POST `/orders/{id}/incident/report` | Cria evento de alerta em `order_events`; notifica gerente via `kitchen:{storeId}`. **Não muda o estado** — só o gerente confirma |
 | Encerrar turno | HTTP POST `/delivery-persons/shift/end` | Sai da fila disponível |
 
-**Detalhe de "Assumir e Sair" com lock:**
+**Detalhe de aceite com lock (UI: Aceitar pedido):**
 
 ```
-Motoboy A e B clicam "Assumir" no mesmo pedido #0042
+Motoboy A e B clicam "Aceitar pedido" no mesmo pedido #1042
 
   Motoboy A  ──►  HTTP POST /orders/0042/take  (Idempotency-Key: uuid-a)
   Motoboy B  ──►  HTTP POST /orders/0042/take  (Idempotency-Key: uuid-b)
@@ -434,8 +439,9 @@ Spring publica para três canais:
 
 | Situação | Resposta do servidor | Comportamento Angular |
 |----------|----------------------|-----------------------|
-| Aceitar pedido que já é `EM_PREPARO` | STOMP SEND `/user/queue/errors` `{ code: "INVALID_STATE", orderId }` | Toast de aviso; remove card da fila (status_changed já chegou via broadcast) |
-| Marcar pronto pedido não `EM_PREPARO` | Idem | Idem |
+| **Preparar** pedido que não é `RECEBIDO` | `/user/queue/errors` `{ code: "INVALID_STATE", orderId }` | Toast; reconcilia via GET |
+| **Concluir preparo** pedido que não é `EM_PREPARO` | Idem | Idem |
+| Dois cozinheiros **Preparar** o mesmo pedido | Segundo recebe `INVALID_STATE` | Toast; lista atualiza via broadcast |
 | JWT expirou durante o turno | Fastify fecha o WebSocket com código `4001 Unauthorized` | Angular detecta close code → redireciona para login |
 | Queda de internet (close sem código) | — | Backoff de reconexão → HTTP GET reconcilia estado → re-assina |
 | Spring reinicia (deploy) | Conexão cai com `1001 Going Away` | Backoff → reconecta após o Spring voltar |
@@ -483,7 +489,81 @@ Spring publica para três canais:
 ═══════════════════════════════════════════════════════════════════
   assina kitchen:{storeId}  →  vê todos os pedidos em tempo real
   ações pontuais  →  HTTP POST (cancelar, imprevisto, fechar loja)
+  cardápio CRUD   →  HTTP /store/products* (§ 11)
 ```
+
+---
+
+## 11. Cardápio — produtos e limites (HTTP REST)
+
+Todas as rotas abaixo passam pelo **Fastify** (JWT). `store_id` vem do token do funcionário (`GERENTE_LOJA`) ou da loja fixa do tenant no app cliente. Esquema: [DB-02 § 1–1.2](DB-02-disponibilidade-itens.md) · categorias [DB-04 § 1](DB-04-catalogo-checkout-cliente.md). UI gerente: [INF-04 § 4](INF-04-ui-operacao-cliente.md).
+
+### 11.1 App cliente — cardápio público
+
+| Método | Rota | Quem | Resposta |
+|--------|------|------|----------|
+| GET | `/menu` | Cliente autenticado | Categorias ativas (`product_categories.active = true`) ordenadas por `sort_order`. Em cada categoria, produtos com `availability != ARQUIVADO`, ordenados por `products.sort_order`, `name`. Campos por produto: `id`, `name`, `description`, `unitPriceCents`, `imageUrl`, `availability`, `remainingToday` (nulo se ilimitado), `categorySlug`, `categoryDisplayName`. Itens cinza (`PAUSADO_DIA`, `BLOQUEADO`) incluídos com flag para UI. **Raiz:** `fixedDeliveryFeeCents` — cópia de `stores.fixed_delivery_fee_cents` (taxa de entrega fixa; não varia por CEP) |
+
+Não expõe `default_daily_order_limit` bruto — só `remainingToday` derivado de `product_daily_caps` do dia operacional.
+
+### 11.2 Gerente — listagem e filtros
+
+| Método | Rota | Query | Uso |
+|--------|------|-------|-----|
+| GET | `/store/product-categories` | — | Dropdown de filtro e formulário (todas as categorias da loja, inclusive `active = false` para edição interna) |
+| GET | `/store/products` | `categoryId` (UUID, opcional) · `availability` (enum, opcional, repetível) · `archivedOnly` (`true` → só `ARQUIVADO`) · `q` (busca parcial em `name`, opcional) | Tabela **Cardápio**; default exclui `ARQUIVADO` |
+| GET | `/store/products/{productId}` | — | Detalhe + métricas do dia: `defaultDailyOrderLimit`, `effectiveLimitToday`, `unitsSoldToday`, `remainingToday` |
+
+Resposta de lista (cada item): campos de `products` + caps do dia operacional atual.
+
+### 11.3 Gerente — CRUD
+
+| Método | Rota | Corpo / notas |
+|--------|------|----------------|
+| POST | `/store/products` | JSON: `{ name, description?, categoryId, unitPriceCents, defaultDailyOrderLimit?, sortOrder?, availability? }` — default `availability = DISPONIVEL`. Opcional **multipart** `image` no mesmo request → grava `image_url` |
+| PATCH | `/store/products/{productId}` | Parcial: `name`, `description`, `categoryId`, `unitPriceCents`, `defaultDailyOrderLimit`, `sortOrder`, `availability` (pausa, bloqueio, arquivar, reativar) |
+| POST | `/store/products/{productId}/image` | Multipart `image` — substitui foto; retorna `imageUrl` |
+| DELETE | `/store/products/{productId}` | **Hard delete** só se gerente confirmar; pedidos antigos mantêm snapshot em `order_items`. Preferir `availability = ARQUIVADO` para ocultar |
+
+**Autorização:** `GERENTE_LOJA` para escrita; cozinha **não** chama estas rotas.
+
+### 11.4 Gerente — limite efetivo só hoje
+
+| Método | Rota | Corpo |
+|--------|------|-------|
+| PATCH | `/store/products/{productId}/daily-cap` | `{ "effectiveLimit": 40 }` ou `{ "effectiveLimit": null }` (ilimitado **só hoje**) |
+
+Upsert em `product_daily_caps` para `(store_id, product_id, operational_date = hoje)`. Não altera `products.default_daily_order_limit`.
+
+**Erros comuns:**
+
+| HTTP | Código | Quando |
+|------|--------|--------|
+| 404 | `PRODUCT_NOT_FOUND` | ID fora da loja |
+| 409 | `DAILY_LIMIT_BELOW_SOLD` | Reduzir `effectiveLimit` abaixo de `units_sold` |
+| 422 | `INVALID_CATEGORY` | `categoryId` de outra loja |
+
+### 11.5 Checkout — validação de produto e entrega
+
+`POST /orders` (corpo detalhado em DB-04 / HAPPY-21) resolve cada linha por `productId` + `quantity`:
+
+- `availability` deve ser `DISPONIVEL`
+- loja `ABERTA`
+- se houver teto: `quantity <= remainingToday` (lock row `product_daily_caps` + incremento `units_sold` na mesma transação)
+- `delivery_fee_cents := stores.fixed_delivery_fee_cents` (snapshot; **sem** lookup de CEP/zona)
+
+Endereço de entrega é obrigatório (validação de campos — [FLUX-SAD-07](../fluxos/sadPaths/FLUX-SAD-07-endereco-vazio.md)); CEP **não** altera a taxa.
+
+Falha → 409 `ITEM_UNAVAILABLE` ou `DAILY_LIMIT_EXCEEDED` ([FLUX-SAD-03](../fluxos/sadPaths/FLUX-SAD-03-item-checkout.md), [FLUX-SAD-24](../fluxos/sadPaths/FLUX-SAD-24-limite-dia.md)).
+
+### 11.6 Gerente — configuração da loja (taxa de entrega)
+
+| Método | Rota | Corpo |
+|--------|------|-------|
+| GET | `/store/settings` | — | Retorna `whatsappNumber`, `timezone`, **`fixedDeliveryFeeCents`** |
+| PATCH | `/store/settings` | Parcial: mesmos campos (incl. `fixedDeliveryFeeCents` ≥ 0) |
+
+Pedidos já criados **não** retroagem; só novos checkouts usam o valor atualizado. Ver [FLUX-HAPPY-12](../fluxos/happypaths/FLUX-HAPPY-12-horario.md) Parte 0.
 
 ---
 

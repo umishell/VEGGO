@@ -12,7 +12,7 @@
 
 ```
 Cliente tenta finalizar → sistema pede endereço → cliente cadastra
-→ frete calculado → finaliza → endereço salvo automaticamente para os próximos pedidos
+→ taxa de entrega fixa no resumo → finaliza → endereço salvo automaticamente para os próximos pedidos
 ```
 
 **Passo a passo:**
@@ -23,7 +23,7 @@ Cliente tenta finalizar → sistema pede endereço → cliente cadastra
 | 2 | Sistema | Detecta que não há endereço de entrega cadastrado |
 | 3 | Sistema | Exibe formulário: **"Informe seu endereço de entrega"** |
 | 4 | 👤 Cliente | Preenche rua, número, bairro e CEP (obrigatórios) + complemento e ponto de referência (opcionais, mas ajudam o motoboy a encontrar a casa) |
-| 5 | Sistema | Calcula o frete pela região e mostra o valor |
+| 5 | Sistema | Mostra subtotal, **taxa de entrega fixa** (`fixed_delivery_fee_cents`) e total |
 | 6 | 👤 Cliente | Confirma e finaliza normalmente |
 | 7 | Sistema | **Salva o endereço automaticamente** no perfil do cliente |
 | 8 | 👤 Cliente | Nos próximos pedidos, o endereço já aparece pré-selecionado na tela de finalização |

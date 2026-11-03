@@ -450,6 +450,49 @@ fun passwordEncoder(): PasswordEncoder = Argon2PasswordEncoder(
 
 ---
 
+## 6.1 Quem pode se cadastrar
+
+| Perfil | Cadastro |
+|--------|----------|
+| `CLIENTE` | **Autocadastro** — `POST /auth/register` no `app-cliente` (nome, e-mail, telefone, senha). Sem convite do gerente |
+| `FUNCIONARIO_COZINHA` | **Somente gerente** — tela **Funcionários** no `web-operacao`. Sem endpoint público de registro |
+| `MOTOBOY` | Idem cozinha |
+| `GERENTE_LOJA` | Fora do MVP narrativo de fluxo (seed/demo ou provisionamento inicial) |
+
+---
+
+## 6.2 Cadastro de funcionário — senha fora da visão do gerente
+
+Fluxo presencial (ver [FLUX-HAPPY-13-usuarios](../fluxos/happypaths/FLUX-HAPPY-13-usuarios.md)):
+
+1. Gerente autenticado chama `POST /store/staff` com `{ name, email, role, phone? }` **sem** campo `password` definido pelo gerente.
+2. Resposta inclui `staffSetupToken` de curta duração **ou** a UI web exibe etapa local onde o **funcionário** preenche `password` + `passwordConfirm` no mesmo request final `POST /store/staff/complete` — o Angular usa input type password com **painel voltado ao funcionário**; o gerente não recebe cópia do valor.
+3. Spring recebe a senha em claro **uma vez** no TLS, aplica Argon2id, descarta plaintext.
+
+Proibido: gerente enviar senha inicial fixa, gerente ver senha em e-mail ou log.
+
+---
+
+## 6.3 Reset de senha de funcionário
+
+- **Somente** `GERENTE_LOJA`: `POST /store/staff/{userId}/password-reset` com corpo `{ newPassword }` digitado pelo funcionário presente (mesma UX de privacidade do cadastro).
+- Incrementa `user:{userId}:session_version` no Redis — derruba sessões antigas.
+- Cliente final usa recuperação por e-mail no app — ver § 6.4 e [FLUX-HAPPY-02-recuperacao-senha](../fluxos/happypaths/FLUX-HAPPY-02-recuperacao-senha.md). Não passa pelo gerente.
+
+---
+
+## 6.4 Reset de senha do cliente (e-mail)
+
+| Etapa | Endpoint | Regra |
+|-------|----------|-------|
+| Solicitar | `POST /auth/password-reset/request` `{ email }` | Gera código numérico/alfanumérico, TTL (~15 min), envia por e-mail. Resposta genérica |
+| Validar código | `POST /auth/password-reset/confirm-code` `{ email, code }` | Retorna `resetToken` de curta duração se válido |
+| Nova senha | `POST /auth/password-reset/complete` `{ resetToken, password, passwordConfirm }` | Argon2id; invalida código; incrementa `user:{userId}:session_version` |
+
+Proibido: gerente resetar senha de cliente pelo backoffice no MVP.
+
+---
+
 ## 7. Redis — papéis na autenticação
 
 | Chave Redis | TTL | Propósito |

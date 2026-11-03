@@ -21,7 +21,7 @@ Cliente abre Endereços → escolhe o padrão, edita, apaga ou adiciona
 
 | Campo | Obrigatório | Exemplo | Para que serve |
 |-------|-------------|---------|----------------|
-| **CEP** | Sim | `80210-170` | Determina zona de frete |
+| **CEP** | Sim | `80210-170` | Localização da entrega (motoboy / maps) |
 | **Rua** | Sim | `Rua das Flores` | — |
 | **Número** | Sim | `42` | — |
 | **Bairro** | Sim | `Centro` | — |
@@ -39,12 +39,14 @@ Cliente abre Endereços → escolhe o padrão, edita, apaga ou adiciona
 | 1 | 👤 Cliente | Abre **Endereços** no perfil |
 | 2 | 👤 Cliente | Vê todos os endereços já usados em compras, com um marcado como padrão |
 | 3 | 👤 Cliente | Marca outro como **Padrão** |
-| 4 | Sistema | O checkout seguinte abre com esse endereço selecionado |
+| 4 | Sistema | No checkout, a combobox já vem com o endereço **padrão** selecionado |
 | 5 | 👤 Cliente | Edita rua, número, complemento, bairro, CEP ou ponto de referência de um endereço |
-| 6 | Sistema | Se o CEP novo estiver fora da zona, avisa e não deixa salvar. Ver [FLUX-SAD-08-frete-fora](../sadPaths/FLUX-SAD-08-frete-fora.md) |
-| 7 | 👤 Cliente | Apaga um endereço que não quer mais |
-| 8 | Sistema | Tira o endereço da lista. Pedidos antigos continuam mostrando o endereço daquela entrega |
-| 9 | 👤 Cliente | No checkout, digita um endereço novo (incluindo complemento e ponto de referência, se quiser) |
-| 10 | Sistema | Usa esse endereço na compra e **salva** na lista |
+| 6 | 👤 Cliente | Apaga um endereço que não quer mais |
+| 7 | Sistema | Tira o endereço da lista. Pedidos antigos continuam mostrando o endereço daquela entrega |
+| 8 | 👤 Cliente | No checkout, abre a combobox: escolhe endereço salvo, mantém o padrão ou toca **Adicionar novo** |
+| 9 | 👤 Cliente | Se adicionar novo, preenche campos (complemento e referência opcionais) |
+| 10 | Sistema | Usa o endereço escolhido na compra e **salva** na lista se for novo |
 
 > O endereço gravado no pedido é uma **cópia completa** (incluindo complemento e ponto de referência). Editar ou apagar o cadastro não reescreve entrega já feita.
+
+**Formas de pagamento (mock MVP):** o cliente pode salvar rótulos simulados no perfil (autofill no checkout) ou informar uma nova forma só na finalização — mesmo padrão da combobox de endereços. Ver [FLUX-HAPPY-05-venda](FLUX-HAPPY-05-venda.md).

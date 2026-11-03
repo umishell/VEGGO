@@ -1,5 +1,5 @@
 # FLUX-HAPPY-11-item-cozinha
-### Cozinha pausa ou bloqueia um item
+### KDS — lista à esquerda, detalhe à direita, vários preparos
 
 **Perfis:** 👨‍🍳
 
@@ -8,49 +8,42 @@
 ---
 
 **Perfis:** 👨‍🍳 Cozinha  
-**Veja também:** [FLUX-HAPPY-10-item-gerente](FLUX-HAPPY-10-item-gerente.md) — o gerente faz as mesmas pausas e é o único que apaga o produto.  
-**Veja também:** [FLUX-SAD-13-loja-emergencia](../sadPaths/FLUX-SAD-13-loja-emergencia.md) — fechar a loja inteira é só com o gerente.
-
-A cozinha não recusa pedido que já entrou na fila. Se um ingrediente acabou, ela impede o **próximo** pedido daquele item.
+**Veja também:** [FLUX-HAPPY-10-item-gerente](FLUX-HAPPY-10-item-gerente.md) · [INF-04-ui-operacao-cliente](../../docTecnica/INF-04-ui-operacao-cliente.md) § 1
 
 ```
-Ingrediente acaba → cozinha pausa o dia ou bloqueia o item
-→ cliente vê item cinza → pedido novo daquele item não entra
+Esquerda: linhas RECEBIDO + EM_PREPARO (⚡ prioridade, depois chegada)
+Clique = seleciona (não prepara sozinho)
+Direita: detalhe + Preparar (↖) / Concluir preparo (↗) + timer
+Concluir → PRONTO → some da cozinha → motoboy vê na fila
 ```
-
-> A cozinha **não tem** as ações Arquivar, Desarquivar ou Remover produto — essas são exclusivas do gerente. Arquivar oculta o item completamente das interfaces; pausar/bloquear apenas o torna cinza no cardápio do cliente. Ver [FLUX-HAPPY-10-item-gerente](FLUX-HAPPY-10-item-gerente.md).
 
 ---
 
-## Pausar para o dia
+## Layout
+
+| Área | Conteúdo |
+|------|----------|
+| **Esquerda** | Uma linha por pedido ativo na cozinha. Contador **N pedidos** |
+| **Seleção** | Clique muda cor/borda da linha e carrega o **detalhe à direita** |
+| **Direita — topo** | **Preparar** (esquerda) e **Concluir preparo** (direita); centro: **timer** quando em preparo |
+| **Direita — corpo** | `display_number` + linhas `order_items` (somente leitura) |
+
+---
+
+## Passo a passo
 
 | # | Quem | O que acontece |
 |---|------|----------------|
-| 1 | 👨‍🍳 Cozinha | Em **Disponibilidade**, escolhe o item e clica em **Pausar para o dia** |
-| 2 | Sistema | Grava `PAUSADO_DIA` |
-| 3 | 👤 Cliente | Vê o item cinza: **"Não está sendo produzido hoje."** |
-| 4 | 🔑 Gerente | Vê o mesmo estado no painel |
-| 5 | Sistema | Na meia-noite volta a `DISPONIVEL` |
-| 6 | 👨‍🍳 Cozinha ou 🔑 Gerente | Qualquer um dos dois pode reativar antes |
+| 1 | Sistema | Checkout cria pedido `RECEBIDO`; aparece como linha na lista |
+| 2 | 👨‍🍳 Cozinha | Clica na linha do pedido — detalhe abre; pedido **ainda** `RECEBIDO` |
+| 3 | 👨‍🍳 Cozinha | Clica **Preparar** (↖) |
+| 4 | Sistema | `RECEBIDO → EM_PREPARO`; timeline cliente **Em preparo**; timer inicia; estilo “em preparo” na lista e no detalhe; **Preparar** some; **Concluir preparo** aparece |
+| 5 | 👨‍🍳 Cozinha | Pode selecionar **outra linha** na lista para alternar detalhe (vários pedidos em preparo ao mesmo tempo) |
+| 6 | 👨‍🍳 Cozinha | Embala e anota **`display_number`** no pacote |
+| 7 | 👨‍🍳 Cozinha | Clica **Concluir preparo** (↗) |
+| 8 | Sistema | Timer congela; grava `prep_duration_seconds`; `→ PRONTO`; linha e detalhe **somem** do KDS |
+| 9 | 🛵 Motoboy | Pedido na **fila de prontos** com o mesmo `display_number` |
 
 ---
 
-## Bloquear temporariamente
-
-| # | Quem | O que acontece |
-|---|------|----------------|
-| 1 | 👨‍🍳 Cozinha | Clica em **Bloquear temporariamente** |
-| 2 | Sistema | Grava `BLOQUEADO` |
-| 3 | 👤 Cliente | Vê o item cinza: **"Indisponível no momento."** |
-| 4 | Sistema | A meia-noite não reativa |
-| 5 | 👨‍🍳 Cozinha ou 🔑 Gerente | Reativa manualmente quando puder produzir de novo |
-
----
-
-> A cozinha não apaga produto e não fecha a loja. Pedido que já está na fila dela segue até a entrega, mesmo que o item seja pausado depois.
-
----
-
-> 📌 **Nota técnica resumida:**  
-> Mesma coluna `products.availability` do gerente.  
-> → [`../../docTecnica/DB-02-disponibilidade-itens.md`](../../docTecnica/DB-02-disponibilidade-itens.md)
+> 📌 **Técnica:** ORD-01 § 5 · `prep_*` e timer DB-04 § 2 · WebSocket INF-02 § 4 · métricas gerente DB-03 § 6

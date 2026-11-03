@@ -18,11 +18,9 @@ Chegou um novo hambúrguer especial → gerente cria o produto → aparece no ca
 | # | Quem | O que acontece |
 |---|------|----------------|
 | 1 | 🔑 Gerente | Acessa o painel e clica em **Cardápio → Novo produto** |
-| 2 | 🔑 Gerente | Preenche: nome, descrição, preço, categoria, foto e **tipo do produto** (`Alimento preparado` ou `Bebida em embalagem fechada`) |
+| 2 | 🔑 Gerente | Preenche: nome, descrição, preço, **categoria** ([DB-04](../../docTecnica/DB-04-catalogo-checkout-cliente.md) § 1.1), foto e **limite padrão de pedidos por dia** (`default_daily_order_limit`; vazio = ilimitado) |
 | 3 | 🔑 Gerente | Marca como **"Disponível"** e clica em **Salvar** |
-| 4 | Sistema | O produto é criado e aparece imediatamente no cardápio do cliente |
-| 5 | 👤 Cliente | Ao abrir o app, já vê o novo produto listado |
+| 4 | Sistema | `POST /store/products` (INF-02 § 11.3) — cria linha em `products` e, no **dia operacional atual**, inicializa `product_daily_caps.effective_limit` igual ao padrão |
+| 5 | 👤 Cliente | `GET /menu` — vê o novo produto na categoria correta |
 
-> 📌 O campo **tipo do produto** (`item_type`) é obrigatório e define o destino do item caso ocorra um imprevisto em rota: alimentos preparados são descartados; bebidas em embalagem fechada ficam como pendência de devolução do motoboy. Pode ser alterado na edição do produto a qualquer momento.  
-> → Regra técnica: [`../../docTecnica/DB-02-disponibilidade-itens.md`](../../docTecnica/DB-02-disponibilidade-itens.md)  
-> → Protocolo de imprevisto: [`../../docTecnica/ORD-01-estados-pedido.md`](../../docTecnica/ORD-01-estados-pedido.md)
+> 📌 Colunas `products`: [DB-02 § 1](../../docTecnica/DB-02-disponibilidade-itens.md) · API: [INF-02 § 11](../../docTecnica/INF-02-http-vs-websocket.md) · Tela gerente: [INF-04 § 4](../../docTecnica/INF-04-ui-operacao-cliente.md)

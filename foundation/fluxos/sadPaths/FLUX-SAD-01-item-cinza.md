@@ -8,7 +8,7 @@
 ---
 
 **Perfis:** 👤 Cliente  
-**Causa:** Cozinha ou gerente marcou `PAUSADO_DIA` ou `BLOQUEADO`.
+**Causa:** Gerente marcou `PAUSADO_DIA` ou `BLOQUEADO` (cozinha avisou falta de insumo, se for o caso).
 
 ```
 Item continua na lista, cinza, com texto → cliente não consegue pedir
@@ -29,7 +29,7 @@ Item **apagado** pelo gerente não passa por esta tela: ele não está mais na l
 
 > **Impacto:** Baixo. O cliente entende por que não pede, em vez de achar que o produto foi tirado do cardápio para sempre.
 
-**Resolução:** reativação manual (cozinha ou gerente). `PAUSADO_DIA` também volta sozinho na meia-noite. `BLOQUEADO` não.
+**Resolução:** reativação manual pelo **gerente**. `PAUSADO_DIA` também volta sozinho na meia-noite. `BLOQUEADO` não.
 
 ---
 
