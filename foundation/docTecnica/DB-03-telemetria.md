@@ -157,7 +157,7 @@ SELECT client_id,
 ### Tela 5 — Operação
 
 ```sql
--- Tempo médio cozinha: preferir orders.prep_duration_seconds (ORD-01 § 5.5)
+-- Tempo médio cozinha: preferir orders.prep_duration_seconds (DB-04 § 2)
 SELECT AVG(prep_duration_seconds) / 60.0 AS avg_kitchen_minutes
   FROM orders o
  WHERE o.store_id = :storeId

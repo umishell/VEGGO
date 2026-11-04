@@ -17,7 +17,7 @@ Stack fixa: PostgreSQL como único banco da aplicação, Redis só para sessão,
 | [INF-02](INF-02-http-vs-websocket.md) | HTTP vs WebSocket por transição | Protocolo por ator e estado; **§ 11 CRUD cardápio** (`/menu`, `/store/products`); lifecycle cozinha |
 | [INF-03](INF-03-autenticacao.md) | Autenticação por plataforma | JWT web/mobile; **autocadastro só cliente**; reset cliente por e-mail; cadastro e reset de funcionário pelo gerente |
 | [DB-03](DB-03-telemetria.md) | Telemetria e estatísticas | Queries de agregação; painel do dia; histórico |
-| [DB-04](DB-04-catalogo-checkout-cliente.md) | Cardápio, checkout, cliente | Categorias; `display_number`; endereços/pagamentos salvos; `order_items` |
+| [DB-04](DB-04-catalogo-checkout-cliente.md) | Cardápio, checkout, cliente | **`orders`**; carrinho local + **`client_shopping_sessions`**; histórico / refazer |
 | [INF-04](INF-04-ui-operacao-cliente.md) | Layout KDS, motoboy, cliente, **cardápio gerente** | Painéis KDS; fluxo balcão; checkout UI; **filtro por categoria** § 4 |
 
 ---

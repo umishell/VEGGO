@@ -19,10 +19,10 @@ Cliente adiciona itens → ajusta quantidades → fecha o app → volta → carr
 
 | # | Quem | O que acontece |
 |---|------|----------------|
-| 1 | 👤 Cliente | No cardápio, toca em **X-Burger** e clica **Adicionar ao carrinho** |
-| 2 | Sistema | Adiciona o item com quantidade 1. O ícone flutuante do carrinho aparece com o total |
+| 1 | 👤 Cliente | No cardápio (loja **aberta** na entrada), toca em **X-Burger** e clica **Adicionar ao carrinho** |
+| 2 | Sistema | Primeiro item grava `cartStartedAt`; associa `shoppingSessionId` ([DB-04 § 6–7](../../docTecnica/DB-04-catalogo-checkout-cliente.md)); quantidade 1 no carrinho |
 | 3 | 👤 Cliente | Navega até **Bebidas**, toca em **Coca-Cola** e clica **Adicionar** |
-| 4 | Sistema | Adiciona a bebida. Carrinho exibe "2 itens" e o subtotal atualizado |
+| 4 | Sistema | Carrinho exibe totais atualizados |
 
 ---
 
@@ -46,12 +46,12 @@ Cliente adiciona itens → ajusta quantidades → fecha o app → volta → carr
 
 | # | Quem | O que acontece |
 |---|------|----------------|
-| 12 | 👤 Cliente | **Fecha o app** com X-Burger (×2) no carrinho |
-| 13 | 👤 Cliente | Reabre o app minutos depois |
-| 14 | Sistema | Restaura o carrinho exatamente como estava — itens e quantidades |
-| 15 | 👤 Cliente | Continua de onde parou, direto para o checkout |
+| 12 | 👤 Cliente | **Fecha ou mata o app** com itens no carrinho |
+| 13 | 👤 Cliente | Reabre dentro de **3 horas**, ainda logado |
+| 14 | Sistema | Restaura carrinho e sessão de compra (se válida) |
+| 15 | 👤 Cliente | Pode ir ao checkout — **mesmo se a loja fechou** nesse intervalo ([FLUX-SAD-14](../sadPaths/FLUX-SAD-14-loja-fechada.md) cenário E) |
 
-> 💡 O carrinho fica salvo enquanto a sessão do cliente está ativa. Fazer **logout** descarta o carrinho.
+> 💡 Carrinho persiste ao fechar app; **logout** limpa; após **3 h** desde o 1º item o carrinho zera ([FLUX-SAD-04](../sadPaths/FLUX-SAD-04-carrinho-sessao.md)). Login dura **~3 meses** (refresh token).
 
 ---
 

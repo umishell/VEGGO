@@ -18,7 +18,7 @@ O checkout **sempre** revalida no commit (não confia só no que o app mostrou s
 
 | Validação | Se falhar | Código HTTP / negócio |
 |-----------|-----------|------------------------|
-| Loja `ABERTA` | Pedido bloqueado | `STORE_CLOSED` |
+| Loja `ABERTA` **ou** `shoppingSessionId` válido | Sem direito de checkout | `STORE_CLOSED` |
 | Item `DISPONIVEL` (não pausado/bloqueado) | Linha inválida | **`ITEM_UNAVAILABLE`** |
 | Soma das quantidades ≤ **restante diário** (`product_daily_caps`) | Teto do dia | **`DAILY_LIMIT_EXCEEDED`** — ver [FLUX-SAD-24-limite-dia](FLUX-SAD-24-limite-dia.md) |
 | Pagamento simulado | Rollback | `PAYMENT_FAILED` — [FLUX-SAD-06-pagamento](FLUX-SAD-06-pagamento.md) |

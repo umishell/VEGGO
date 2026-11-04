@@ -130,6 +130,7 @@ Quando o cliente faz checkout, o Spring:
 {
   "type": "order.new",
   "orderId": "550e8400-e29b-41d4-a716-446655440000",
+  "displayNumber": "42",
   "items": [
     { "name": "X-Burguer", "quantity": 2 },
     { "name": "Coca-Cola", "quantity": 1 }
@@ -343,8 +344,8 @@ O motoboy combina: assina o canal `delivery:{storeId}` para saber de novos pedid
 ```
 Motoboy A e B clicam "Aceitar pedido" no mesmo pedido #1042
 
-  Motoboy A  ──►  HTTP POST /orders/0042/take  (Idempotency-Key: uuid-a)
-  Motoboy B  ──►  HTTP POST /orders/0042/take  (Idempotency-Key: uuid-b)
+  Motoboy A  ──►  HTTP POST /orders/550e8400-e29b-41d4-a716-446655440000/take  (Idempotency-Key: uuid-a)
+  Motoboy B  ──►  HTTP POST /orders/550e8400-e29b-41d4-a716-446655440000/take  (Idempotency-Key: uuid-b)
 
   Spring:
     BEGIN TRANSACTION
@@ -502,7 +503,7 @@ Todas as rotas abaixo passam pelo **Fastify** (JWT). `store_id` vem do token do 
 
 | Método | Rota | Quem | Resposta |
 |--------|------|------|----------|
-| GET | `/menu` | Cliente autenticado | Categorias ativas (`product_categories.active = true`) ordenadas por `sort_order`. Em cada categoria, produtos com `availability != ARQUIVADO`, ordenados por `products.sort_order`, `name`. Campos por produto: `id`, `name`, `description`, `unitPriceCents`, `imageUrl`, `availability`, `remainingToday` (nulo se ilimitado), `categorySlug`, `categoryDisplayName`. Itens cinza (`PAUSADO_DIA`, `BLOQUEADO`) incluídos com flag para UI. **Raiz:** `fixedDeliveryFeeCents` — cópia de `stores.fixed_delivery_fee_cents` (taxa de entrega fixa; não varia por CEP) |
+| GET | `/menu` | Cliente autenticado | Se `store_status != ABERTA` **e** sem sessão de compra válida: payload “loja fechada” (SAD-14) — sem emitir sessão. Se `ABERTA`: categorias/produtos como hoje **+** `shoppingSessionId` / `shoppingSessionExpiresAt` ([DB-04 § 7](DB-04-catalogo-checkout-cliente.md)). Campos por produto inalterados. **Raiz:** `fixedDeliveryFeeCents`, `storeStatus`, `nextOpensAt` (countdown) |
 
 Não expõe `default_daily_order_limit` bruto — só `remainingToday` derivado de `product_daily_caps` do dia operacional.
 
@@ -548,13 +549,14 @@ Upsert em `product_daily_caps` para `(store_id, product_id, operational_date = h
 `POST /orders` (corpo detalhado em DB-04 / HAPPY-21) resolve cada linha por `productId` + `quantity`:
 
 - `availability` deve ser `DISPONIVEL`
-- loja `ABERTA`
+- **Loja:** **não** exige `ABERTA` se `shoppingSessionId` válido ([DB-04 § 7](DB-04-catalogo-checkout-cliente.md)); senão exige `ABERTA` → senão `409 STORE_CLOSED`
 - se houver teto: `quantity <= remainingToday` (lock row `product_daily_caps` + incremento `units_sold` na mesma transação)
 - `delivery_fee_cents := stores.fixed_delivery_fee_cents` (snapshot; **sem** lookup de CEP/zona)
+- corpo/cabeçalho: `shoppingSessionId` quando a loja já fechou após a entrada do cliente
 
 Endereço de entrega é obrigatório (validação de campos — [FLUX-SAD-07](../fluxos/sadPaths/FLUX-SAD-07-endereco-vazio.md)); CEP **não** altera a taxa.
 
-Falha → 409 `ITEM_UNAVAILABLE` ou `DAILY_LIMIT_EXCEEDED` ([FLUX-SAD-03](../fluxos/sadPaths/FLUX-SAD-03-item-checkout.md), [FLUX-SAD-24](../fluxos/sadPaths/FLUX-SAD-24-limite-dia.md)).
+Falha → 409 `ITEM_UNAVAILABLE`, `DAILY_LIMIT_EXCEEDED` ou `STORE_CLOSED`
 
 ### 11.6 Gerente — configuração da loja (taxa de entrega)
 

@@ -23,7 +23,7 @@ O número segue a ordem do acontecimento. A palavra depois do número é o tema.
 | [FLUX-HAPPY-05-venda](FLUX-HAPPY-05-venda.md) | Venda completa — do carrinho à entrega na porta | 👤 👨‍🍳 🛵 |
 | [FLUX-HAPPY-06-timeline](FLUX-HAPPY-06-timeline.md) | Cliente acompanha pedido em tempo real | 👤 |
 | [FLUX-HAPPY-07-cancela](FLUX-HAPPY-07-cancela.md) | Cliente cancela pedido antes do preparo | 👤 |
-| [FLUX-HAPPY-08-historico](FLUX-HAPPY-08-historico.md) | Cliente consulta histórico de pedidos anteriores | 👤 |
+| [FLUX-HAPPY-08-historico](FLUX-HAPPY-08-historico.md) | Histórico de pedidos + **refazer pedido** | 👤 |
 | [FLUX-HAPPY-09-item-novo](FLUX-HAPPY-09-item-novo.md) | Gerente cadastra novo produto no cardápio | 🔑 |
 | [FLUX-HAPPY-10-item-gerente](FLUX-HAPPY-10-item-gerente.md) | Gerente pausa, bloqueia ou apaga item do cardápio | 🔑 |
 | [FLUX-HAPPY-11-item-cozinha](FLUX-HAPPY-11-item-cozinha.md) | KDS — lista, seleção, vários preparos, timer | 👨‍🍳 |

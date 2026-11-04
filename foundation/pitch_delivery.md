@@ -12,7 +12,7 @@ Este documento é a definição do MVP: o que o sistema **é**. Fluxos narrativo
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Identidade     | **Cliente:** autocadastro no app; **recuperação de senha** por e-mail (código + nova senha 2×). **Cozinha e motoboy:** só o gerente cadastra na tela **Funcionários**; senha definida pelo funcionário na hora (gerente não vê). Reset de senha de funcionário: só gerente, com funcionário presente. Gerente desativa contas. **Cozinha:** qualquer funcionário logado abre o mesmo KDS — sem escala designada pelo gerente |
 | Cardápio       | Categorias MVP ([DB-04](docTecnica/DB-04-catalogo-checkout-cliente.md)); limite diário ([DB-02](docTecnica/DB-02-disponibilidade-itens.md) § 1.2). **Só gerente** pausa/bloqueia/arquiva/apaga |
-| Pedido         | Checkout atômico; `display_number` visível (cliente, KDS, embalagem, motoboy)                                                                                                                                                                                                                                                                                                                                                |
+| Pedido         | Tabela **`orders`** + entidade **`Order`**: **`id` UUID** (API, timeline, imprevisto); **`display_number`** sequencial **por dia** (reset na meia-noite do fuso da loja) para cliente, KDS, embalagem e motoboy |
 | Pagamento      | Simulado no próprio sistema (mock MVP), atômico com o pedido. Cliente usa forma salva (autofill) ou cadastra na hora no checkout. Estorno só quando o pedido vai para `CANCELADO`                                                                                                                                                                                                                                            |
 | Cozinha (KDS)  | **Esquerda:** lista `RECEBIDO` + `EM_PREPARO` (⚡ + ordem de chegada); clique **seleciona** (não prepara sozinho). **Direita:** detalhe + **Preparar** (↖) / **Concluir preparo** (↗), timer central; vários preparos simultâneos. Ao concluir → some; anotar `display_number` na embalagem |
 | Entrega        | Fila `PRONTO` no app; motoboy confere `display_number` na embalagem → **Aceitar pedido** → tela com nome, telefone, WhatsApp, Waze e Maps → **Finalizar entrega**                                                                                                                                                                                                                                                            |
@@ -25,7 +25,7 @@ Este documento é a definição do MVP: o que o sistema **é**. Fluxos narrativo
 
 **Fora do sistema (MVP):** não há **módulo de auditoria** (telas, relatórios ou trilha administrativa de “quem fez o quê”). **Não há cupom nem promoção** no checkout. Controles operacionais ficam em **Funcionários**, **cardápio/pedidos** (gerente), **KDS** (cozinha) e **fila/histórico** (motoboy). O cliente monta pedido pelo **cardápio + carrinho + checkout** (endereço e pagamento mock como acima).
 
-Checkout revalida disponibilidade no commit: item `DISPONIVEL`, loja `ABERTA`, **teto diário** (se configurado) e quantidade no carrinho — qualquer falha aborta a transação (HTTP 409). Nada é cobrado.
+Checkout revalida no commit: itens `DISPONIVEL`, **teto diário**, pagamento e endereço — **não** revalida se a loja ainda está `ABERTA` quando o cliente **já entrou** com sessão de compra válida (ver DB-04 § 6–7). Quem abre o app **depois** do fechamento vê loja cinza + countdown ([FLUX-SAD-14](fluxos/sadPaths/FLUX-SAD-14-loja-fechada.md)). Falha aborta a transação (HTTP 409). Nada é cobrado.
 
 Dois motoboys não ficam com o mesmo pedido: um ganha; o outro recebe 409.
 
@@ -49,7 +49,7 @@ Quatro papéis. Na loja única, o gerente é o administrador da operação (usu�
 | Aplicação      | Tecnologia                 | Telas |
 | -------------- | -------------------------- | ----- |
 | `web-operacao` | Angular + TypeScript       | **Login** · **KDS** · **Cardápio** (CRUD, limite diário, pausa, bloqueio, arquivar — **gerente**) · **Funcionários** · **Horário / Config. loja** (WhatsApp, fuso, **taxa de entrega fixa**) · **Painel do dia** · **Estatísticas** · exceções de pedido |
-| `app-cliente`  | Android · Kotlin + Jetpack | Login · cadastro · recuperar senha · cardápio · carrinho · checkout · histórico · **nos contacte** (WhatsApp loja) · **Acompanhar pedido** (timeline + WhatsApp loja e motoboy) · endereços · pagamentos salvos |
+| `app-cliente`  | Android · Kotlin + Jetpack | Login (**sessão ~3 meses**) · cadastro · recuperar senha · cardápio (só entra se loja aberta) · carrinho (**persiste ao fechar app**, TTL **3 h**, limpa no logout) · checkout · histórico (**refazer pedido**) · **nos contacte** · timeline · endereços · pagamentos salvos |
 | `app-motoboy`  | Android · Kotlin + Jetpack | **Login** · **Turno** · **Fila** (tela principal) · **Detalhe da entrega** · **Confirmar entrega** · **Histórico** de corridas aceitas |
 
 `web-operacao` (Angular web) é exclusivo para a operação interna da loja. Clientes e motoboys usam apps nativos Android. Menus e botões seguem o perfil; a API autoriza de novo no servidor.
@@ -182,12 +182,12 @@ A linha do pedido guarda `product_name` e `unit_price` no momento do checkout. A
 
 | Status | Origem | Cliente pode pedir? | Reabertura |
 | --- | --- | --- | --- |
-| `ABERTA` | Dentro do horário semanal, fim de pausa programada, ou janela `OPENING` | Sim | — |
-| `FECHADA_HORARIO` | Fora do horário semanal (job ou fim de `OPENING`) | Não (cinza + countdown até `next_opens_at`) | Job no próximo horário de abertura |
-| `FECHADA_PROGRAMADA` | Início de `CLOSURE` em `store_schedules` | Não (banner de pausa + countdown até `ends_at`) | Job no `ends_at` — **não** zera o painel do dia |
-| `FECHADA_EMERGENCIA` | Ação manual do gerente (motivo obrigatório) | Não (motivo + mensagem opcional; countdown só se `reopen_at`) | **Só** o gerente. Nenhum job altera este status |
+| `ABERTA` | Dentro do horário semanal, fim de pausa programada, ou janela `OPENING` | Sim — **entrada** no cardápio / nova sessão de compra | — |
+| `FECHADA_HORARIO` | Fora do horário semanal (job ou fim de `OPENING`) | Não para quem **abre o app agora** (cinza + countdown). Quem já tem sessão de compra + carrinho dentro de **3 h** ainda finaliza | Job no próximo horário de abertura |
+| `FECHADA_PROGRAMADA` | Início de `CLOSURE` em `store_schedules` | Não para entrada nova (banner + countdown). Compra em andamento ≤ 3 h segue |
+| `FECHADA_EMERGENCIA` | Ação manual do gerente (motivo obrigatório) | Não para entrada nova (motivo; countdown se `reopen_at`). Compra em andamento ≤ 3 h segue |
 
-Jobs e eventos especiais **não** cancelam pedido já criado. Fechar a loja bloqueia carrinho e checkout novos. Cancelar um pedido específico continua sendo ação à parte do gerente.
+Jobs e eventos especiais **não** cancelam pedido já criado. Fechar a loja bloqueia **novos** visitantes (cardápio cinza). Cliente que **já** tinha sessão de compra iniciada com loja aberta pode terminar o checkout dentro do TTL de **3 h**. Cancelar um pedido específico continua sendo ação à parte do gerente.
 
 A resolução automática de status (horário, `CLOSURE`, `OPENING`) passa por uma função única no backend: ela **ignora** loja em `FECHADA_EMERGENCIA` e, ao terminar um `CLOSURE`, recalcula o status efetivo (pode voltar a `FECHADA_HORARIO` se já passou do horário semanal). Detalhe em `foundation/docTecnica/DB-02-disponibilidade-itens.md`.
 
@@ -203,7 +203,7 @@ stateDiagram-v2
 
 Checkout feliz: `Pedido.RECEBIDO` e `Pagamento.CONFIRMADO` no mesmo `@Transactional`. Simulação falha: rollback completo. Imprevisto em rota não estorna.
 
-**Operações atômicas:** checkout (item `DISPONIVEL` + loja `ABERTA` + taxa de entrega fixa + pedido + snapshot do item + pagamento simulado + caps diários); alocação do motoboy; cancelamento com estorno; voltar de `SAIU_PARA_ENTREGA` para `RECEBIDO` no imprevisto; marcar pronto.
+**Operações atômicas:** checkout (item `DISPONIVEL` + sessão de compra válida ou loja `ABERTA` na entrada + taxa fixa + pedido + snapshot + pagamento mock + caps); alocação do motoboy; cancelamento com estorno; imprevisto; marcar pronto.
 
 **Concorrência:** lock otimista (`version`) nos agregados; `SELECT … FOR UPDATE` na alocação; `Idempotency-Key` em checkout, alocar, cancelar e simulação de pagamento.
 

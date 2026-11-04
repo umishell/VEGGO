@@ -55,7 +55,7 @@ Na pasta, após [FLUX-SAD-07](FLUX-SAD-07-endereco-vazio.md) vem direto o [FLUX-
 | FLUX-SAD-02-item-carrinho | Item do carrinho pausado — aviso e remoção |
 | FLUX-SAD-03-item-checkout | Checkout recusado — item indisponível ou limite do dia |
 | FLUX-SAD-24-limite-dia | Limite diário esgotado — ajustar carrinho ou gerente aumenta teto |
-| FLUX-SAD-04-carrinho-sessao | Carrinho salvo se sessão ativa; perdido no logout |
+| FLUX-SAD-04-carrinho-sessao | Carrinho persiste ao fechar app; logout limpa; TTL **3 h** |
 | FLUX-SAD-05-checkout-fecha | Fechou app no checkout — nada criado |
 | FLUX-SAD-06-pagamento | Pagamento falha — nada cobrado |
 | FLUX-SAD-07-endereco-vazio | Sem endereço — sistema pede antes de finalizar |

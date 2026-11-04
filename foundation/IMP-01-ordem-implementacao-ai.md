@@ -98,12 +98,14 @@ flowchart TD
 | 2 | **HAPPY-22** · DB-04 §1 · INF-02 § 11.1 · INF-04 §3 cardápio |
 | 3 | **HAPPY-03** (carrinho local) |
 | 4 | **HAPPY-04** · DB-04 §4 endereços |
-| 5 | **HAPPY-21** · DB-04 §2–6 · **ORD-01** §7 pagamento · implementar máquina até `RECEBIDO` |
+| 5 | **HAPPY-21** · **HAPPY-08** · DB-04 §2–8 · **ORD-01** §7 · **INF-03** §3.1 (login 3 meses) |
 | 6 | Sad de checkout | **SAD-03**, **SAD-06**, **SAD-07**, **SAD-24**, **SAD-02** |
 
 | Backend (contrato crítico) | |
 |----------------------------|---|
-| `POST /orders` | `@Transactional`: loja ABERTA, itens DISPONIVEL, caps, taxa entrega fixa, payment mock, gera `display_number`, `order_items` snapshot |
+| `POST /orders` | `@Transactional`: itens DISPONIVEL, `shoppingSessionId` ou loja aberta na entrada, caps, taxa fixa, payment mock, `display_number`, `order_items` |
+| Sessão compra / histórico | `client_shopping_sessions`; `GET /orders/me`; `POST /orders/{id}/reorder` |
+| Front | Carrinho DataStore (TTL 3 h, limpa no logout); gate loja na entrada; histórico + refazer |
 | Idempotency-Key | Obrigatório no checkout (INF-02) |
 
 **Não fazer ainda:** aceitar na cozinha (evita duplicar regra de fila no app cliente).

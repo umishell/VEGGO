@@ -130,13 +130,9 @@ Protocolo STOMP: INF-02 § 4 (`/accept` → preparar, `/ready` → concluir).
 | Origem | `prep_started_at` (servidor) — UI atualiza a cada segundo |
 | Ao concluir | Timer **congela** no valor final; persiste em `orders.prep_duration_seconds` |
 
-### 5.4 Tabela `orders` — tempo de preparo
+### 5.4 Campos de tempo de preparo
 
-| Coluna | Tipo | Regra |
-|--------|------|--------|
-| `prep_started_at` | `timestamptz`, nulo | Preenchido em `RECEBIDO → EM_PREPARO` |
-| `prep_completed_at` | `timestamptz`, nulo | Preenchido em `EM_PREPARO → PRONTO` |
-| `prep_duration_seconds` | int, nulo | Segundos congelados ao concluir: `prep_completed_at - prep_started_at` (arredondamento inteiro para cima no MVP) |
+Colunas `prep_started_at`, `prep_completed_at`, `prep_duration_seconds` — esquema completo do pedido: [DB-04 § 2](DB-04-catalogo-checkout-cliente.md).
 
 ### 5.5 KDS — painéis (resumo)
 

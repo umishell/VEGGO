@@ -183,7 +183,7 @@ Nenhum job grava `store_status` com valor fixo, exceto transições pontuais aba
 | Início / fim de `OPENING` | `starts_at` / `ends_at` | Se **não** emergência: `resolveStoreStatus(...)` |
 | Meia-noite (`timezone` da loja) | 00:00 local | `PAUSADO_DIA` → `DISPONIVEL` em `products`. **Não** altera `store_status` por si só; opcionalmente roda `resolveStoreStatus` se o relógio cruzou abertura/fechamento |
 
-Checkout e adição ao carrinho exigem `store_status = ABERTA` **no momento da requisição** (após `resolveStoreStatus` se o job acabou de rodar).
+Checkout e **início de compra** (primeiro `GET /menu` que emite sessão de compra, ou equivalente) exigem `store_status = ABERTA` **naquele momento**. **`POST /orders`** **não** rejeita só porque a loja fechou depois — desde que o cliente envie `shoppingSessionId` válido (DB-04 § 7). Sem sessão válida e loja fechada → `409 STORE_CLOSED`.
 
 **Fora do MVP:** tabela `delivery_zones`, frete por CEP/bairro e bloqueio por área de entrega. Ver taxa fixa em `stores.fixed_delivery_fee_cents` acima.
 

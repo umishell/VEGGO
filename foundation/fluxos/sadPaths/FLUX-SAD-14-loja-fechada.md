@@ -25,7 +25,8 @@ Cliente abre o app → loja está fechada → tudo cinza + banner de aviso
 | **Banner no topo** | Faixa de aviso visível em todas as telas do app |
 | **Cardápio** | Exibido todo em tom cinza — itens não clicáveis |
 | **Botão "Adicionar"** | Desabilitado. O cliente não forma nem inicia o carrinho |
-| **Carrinho ativo** | Se já tinha itens, o carrinho fica bloqueado — não avança para checkout |
+| **Carrinho ativo (visitante novo)** | Quem **não** tinha sessão de compra: cardápio cinza — não forma carrinho |
+| **Compra em andamento** | Quem já tinha `shoppingSessionId` + carrinho dentro de **3 h** pode ir ao checkout **mesmo** com loja fechada (banner informativo opcional) |
 | **Countdown** | Temporizador visual em tempo real (quando há horário de reabertura definido) |
 
 ---
@@ -80,10 +81,20 @@ Gerente configurou um fechamento especial com horário de reabertura definido.
 
 ---
 
-> Pedidos já na cozinha antes do fechamento **não são afetados** — seguem normalmente.  
-> O bloqueio acontece no cardápio, antes do carrinho. O cliente não chega ao checkout.
+## Cenário E — Loja fecha enquanto o cliente monta o carrinho
+
+| # | Quem | O que acontece |
+|---|------|----------------|
+| 1 | 👤 Cliente | Logado com loja `ABERTA`; recebe `shoppingSessionId`; monta carrinho |
+| 2 | Sistema | Job de fechamento → `FECHADA_HORARIO` (ou pausa programada) |
+| 3 | 👤 Cliente | Continua vendo carrinho / checkout — **não** perde sessão de compra até `expires_at` (**3 h**) |
+| 4 | Sistema | `POST /orders` **não** exige loja aberta; valida itens + sessão |
+| 5 | 👤 Cliente | Novo visitante que abre o app **agora** cai nos cenários A–D (cinza + countdown) |
 
 ---
+
+> Pedidos já na cozinha antes do fechamento **não são afetados**.  
+> O bloqueio cinza é para **entrada nova**; checkout “legacy” usa [DB-04 § 7](../../docTecnica/DB-04-catalogo-checkout-cliente.md).
 
 > 📌 **Nota técnica resumida:**  
 > `store_status` lido em tempo real via WebSocket. Se fechado: cardápio renderizado com flag `disabled`, banner injetado no topo. Countdown calcula diferença entre `now()` e `next_opens_at` (vem da API, computado no servidor). O frontend só exibe o timer. Para `FECHADA_EMERGENCIA`: `reopen_at` pode ser nulo; se nulo, não exibe countdown.  

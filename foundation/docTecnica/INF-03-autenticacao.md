@@ -106,7 +106,16 @@ Fastify valida o `access_token` do cookie antes de aceitar o upgrade. Se inváli
 
 Apps nativos Android **não usam cookies**. O JWT é enviado como cabeçalho HTTP.
 
-### 3.1 Armazenamento seguro — EncryptedSharedPreferences
+### 3.1 TTL de sessão — `CLIENTE` vs demais mobile
+
+| Perfil | `access_token` | `refresh_token` | Comportamento |
+|--------|----------------|-----------------|---------------|
+| `CLIENTE` (`app-cliente`) | 15 minutos | **90 dias (~3 meses)** | Rotation no refresh; usuário permanece logado salvo **logout** ou revogação (`session_version`) |
+| `MOTOBOY` (`app-motoboy`) | 15 minutos | 7 dias | Idem rotation |
+
+Login do cliente: Fastify emite par JWT; app persiste em EncryptedSharedPreferences. Enquanto o refresh for válido, reabrir o app **não** exige login — carrinho segue regras DB-04 § 6 (TTL **3 h** independente dos 90 dias de login).
+
+### 3.2 Armazenamento seguro — EncryptedSharedPreferences
 
 ```kotlin
 // build.gradle.kts
@@ -146,7 +155,7 @@ class TokenStore(context: Context) {
 - Mesmo que o arquivo `.xml` seja extraído de um dispositivo rooteado, os dados permanecem cifrados sem a master key do Keystore.
 - Substitui completamente `SharedPreferences` simples, que guarda em texto plano.
 
-### 3.2 Envio automático do JWT — OkHttp Interceptor
+### 3.3 Envio automático do JWT — OkHttp Interceptor
 
 ```kotlin
 // AuthInterceptor.kt
@@ -170,7 +179,7 @@ val okHttpClient = OkHttpClient.Builder()
 
 O `AuthInterceptor` adiciona o cabeçalho `Authorization: Bearer <access_token>` em **todas** as requisições. Nenhuma tela precisa se preocupar com tokens.
 
-### 3.3 Refresh automático — OkHttp Authenticator
+### 3.4 Refresh automático — OkHttp Authenticator
 
 O `Authenticator` é chamado pelo OkHttp quando a resposta é HTTP 401 (token expirado):
 
@@ -214,7 +223,7 @@ class TokenAuthenticator(
 
 O header `X-Auth-Retry` é interno (não chega ao Fastify) — serve apenas para evitar loop infinito de refresh caso o novo access_token também retorne 401.
 
-### 3.4 WebSocket com header Authorization — OkHttp WebSocket
+### 3.5 WebSocket com header Authorization — OkHttp WebSocket
 
 Apps Android, ao contrário do browser, podem enviar cabeçalhos customizados **durante o handshake** WebSocket:
 
@@ -277,7 +286,7 @@ class WebSocketManager(
 - Browser: cookie vai automaticamente no handshake → sem controle do JS.
 - Android: `Request.Builder().header("Authorization", ...)` → total controle do app.
 
-### 3.5 Reconexão com backoff (mobile)
+### 3.6 Reconexão com backoff (mobile)
 
 ```kotlin
 private var reconnectAttempts = 0
