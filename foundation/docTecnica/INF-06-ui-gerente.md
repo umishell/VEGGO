@@ -32,6 +32,18 @@ Perfil **GERENTE_LOJA** (JWT). Objetivo: **CRUD de cardápio**, **painel operaci
 
 Ordem sugerida (esquerda → direita). Ajuste visual livre desde que **estado + timer ativo** fiquem visíveis sem scroll horizontal em desktop padrão.
 
+#### 2.2.1 Timer ativo × durações já gravadas × etapas futuras
+
+| Conceito | Comportamento na UI |
+|----------|---------------------|
+| **Timer ativo** (coluna **Timer fase**) | Cronômetro **que incrementa** enquanto o pedido está **no segmento corrente** (regra por `status` em [ORD-01 § 5.7](ORD-01-estados-pedido.md)), atualizado a cada segundo a partir dos timestamps do servidor. **Ao mudar de estado**, o relógio **passa a medir só o novo segmento** (efetivamente “recomeça” do ponto de vista da coluna). |
+| **Pedido encerrado** (`ENTREGUE` ou `CANCELADO`) | **Sem** cronômetro nesta coluna: mostrar **`—`**. Durações fechadas ficam nas colunas por etapa abaixo (valores persistidos). |
+| **Colunas por etapa** (fila → prep., preparo, balcão, entrega, total) | Quando a etapa **já terminou** no servidor, mostrar o valor **gravado** (`*_seconds` ou derivado — [DB-04 § 2.2](DB-04-catalogo-checkout-cliente.md) · § 2.6). Quando a etapa **ainda não terminou**: não há valor persistido — mostrar **`—`** (recomendado) **ou** `00:00` como placeholder visual **desde que fique claro** que não é uma duração real fechada; evitar duplicar o **Timer fase** na mesma linha salvo decisão explícita de produto. |
+| **Etapas futuras** (antes do pedido chegar naquela fase) | Sem gravação: mesma regra da linha acima — **`—`** (ou `00:00` opcional). |
+| **Etapa em andamento** cujo tempo **também** existe como coluna dedicada | Ex.: `PRONTO` (espera motoboy): pode mostrar **tempo ao vivo** na coluna **Balcão** *ou* só no **Timer fase** — **uma** das duas fontes para não duplicar; o valor **só grava** em `balcao_wait_seconds` no **take**. Idem entrega em `SAIU_PARA_ENTREGA`: live no **Timer fase** e/ou na coluna **Entrega** até o **deliver**. |
+
+**Resumo:** o que **já concluiu** no backend aparece como **número fixo** nas colunas por etapa; o que **está em andamento** mede-se com o **timer ativo** (e opcionalmente espelho coerente numa coluna de etapa, sem conflito com o fechamento gravado).
+
 | Coluna | Conteúdo |
 |--------|----------|
 | **#** | `display_number` |
