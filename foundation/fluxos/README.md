@@ -5,7 +5,7 @@
 | Menu | Conteúdo |
 |------|----------|
 | [Happy path — fluxos normais](happypaths/README.md) | `FLUX-HAPPY-01` … `FLUX-HAPPY-22` (+ `02-recuperacao`, `20-motoboy`, `21-checkout`, `22-cardapio`) |
-| [Sad path — problemas e erros](sadPaths/README.md) | Ver índice (`FLUX-SAD-01` … `FLUX-SAD-24`, mais IDs temáticos) |
+| [Sad path — problemas e erros](sadPaths/README.md) | Ver índice (`FLUX-SAD-01` … `FLUX-SAD-23`, mais IDs temáticos e **IDs reservados** sem arquivo) |
 
 **Destaque:** [FLUX-HAPPY-05-venda](happypaths/FLUX-HAPPY-05-venda.md) — venda completa até a entrega.
 

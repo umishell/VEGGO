@@ -35,7 +35,7 @@ Carrinho → Finalizar → tela pagamento → sucesso ou erro explicado
 | 2 | 👤 Cliente | Confirma ou altera endereço; vê taxa de entrega e total |
 | 3 | 👤 Cliente | Escolhe forma de pagamento |
 | 4 | 👤 Cliente | Toca **Finalizar pedido** |
-| 5 | Sistema | Revalida itens, limites e pagamento — **não** bloqueia só porque a loja fechou se `shoppingSessionId` válido ([DB-04 § 7](../../docTecnica/DB-04-catalogo-checkout-cliente.md)) |
+| 5 | Sistema | Revalida itens (`DISPONIVEL`), preço, pagamento e regra de loja/sessão — **não** bloqueia só porque a loja fechou se `shoppingSessionId` válido ([DB-04 § 7](../../docTecnica/DB-04-catalogo-checkout-cliente.md)) |
 | 6 | Sistema | Cria pedido `RECEBIDO` (`orders.id` UUID + `display_number` do dia); salva endereço/pagamento novos se marcado |
 | 7 | 👤 Cliente | Tela **Pedido recebido!** com **`display_number`** (#…) e link para acompanhar (timeline usa UUID em `/orders/{id}`) |
 
@@ -45,7 +45,7 @@ Carrinho → Finalizar → tela pagamento → sucesso ou erro explicado
 
 | Situação | UX |
 |----------|-----|
-| Item indisponível / limite | Modal ou tela com **explicação** + código (`ITEM_UNAVAILABLE`, `DAILY_LIMIT_EXCEEDED`, …) |
+| Item indisponível | Modal ou tela com **explicação** + código (`ITEM_UNAVAILABLE`, …) — [FLUX-SAD-03](../sadPaths/FLUX-SAD-03-item-checkout.md) |
 | Sem sessão e loja fechada | `STORE_CLOSED` — [FLUX-SAD-14](../sadPaths/FLUX-SAD-14-loja-fechada.md) |
 | Pagamento simulado recusado | Mensagem clara; carrinho intacto — [FLUX-SAD-06-pagamento](../sadPaths/FLUX-SAD-06-pagamento.md) |
 

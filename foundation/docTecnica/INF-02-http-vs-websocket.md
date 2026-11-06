@@ -495,9 +495,9 @@ Spring publica para três canais:
 
 ---
 
-## 11. Cardápio — produtos e limites (HTTP REST)
+## 11. Cardápio — produtos (HTTP REST)
 
-Todas as rotas abaixo passam pelo **Fastify** (JWT). `store_id` vem do token do funcionário (`GERENTE_LOJA`) ou da loja fixa do tenant no app cliente. Esquema: [DB-02 § 1–1.2](DB-02-disponibilidade-itens.md) · categorias [DB-04 § 1](DB-04-catalogo-checkout-cliente.md). UI gerente: [INF-04 § 4](INF-04-ui-operacao-cliente.md).
+Todas as rotas abaixo passam pelo **Fastify** (JWT). `store_id` vem do token do funcionário (`GERENTE_LOJA`) ou da loja fixa do tenant no app cliente. Esquema: [DB-02](DB-02-disponibilidade-itens.md) · categorias [DB-04 § 1](DB-04-catalogo-checkout-cliente.md). UI gerente: [INF-04 § 4](INF-04-ui-operacao-cliente.md). **Sem** limite diário por produto nem `product_daily_caps` — ver [DB-02 § 1.2](DB-02-disponibilidade-itens.md).
 
 ### 11.1 App cliente — cardápio público
 
@@ -505,7 +505,7 @@ Todas as rotas abaixo passam pelo **Fastify** (JWT). `store_id` vem do token do 
 |--------|------|------|----------|
 | GET | `/menu` | Cliente autenticado | Se `store_status != ABERTA` **e** sem sessão de compra válida: payload “loja fechada” (SAD-14) — sem emitir sessão. Se `ABERTA`: categorias/produtos como hoje **+** `shoppingSessionId` / `shoppingSessionExpiresAt` ([DB-04 § 7](DB-04-catalogo-checkout-cliente.md)). Campos por produto inalterados. **Raiz:** `fixedDeliveryFeeCents`, `storeStatus`, `nextOpensAt` (countdown) |
 
-Não expõe `default_daily_order_limit` bruto — só `remainingToday` derivado de `product_daily_caps` do dia operacional.
+Não há `remainingToday` nem teto por SKU no payload — operação assume disponibilidade quando `availability = DISPONIVEL` ([DB-02 § 1.2](DB-02-disponibilidade-itens.md)).
 
 ### 11.2 Gerente — listagem e filtros
 
@@ -513,52 +513,36 @@ Não expõe `default_daily_order_limit` bruto — só `remainingToday` derivado 
 |--------|------|-------|-----|
 | GET | `/store/product-categories` | — | Dropdown de filtro e formulário (todas as categorias da loja, inclusive `active = false` para edição interna) |
 | GET | `/store/products` | `categoryId` (UUID, opcional) · `availability` (enum, opcional, repetível) · `archivedOnly` (`true` → só `ARQUIVADO`) · `q` (busca parcial em `name`, opcional) | Tabela **Cardápio**; default exclui `ARQUIVADO` |
-| GET | `/store/products/{productId}` | — | Detalhe + métricas do dia: `defaultDailyOrderLimit`, `effectiveLimitToday`, `unitsSoldToday`, `remainingToday` |
+| GET | `/store/products/{productId}` | — | Detalhe; opcionalmente métricas **somente leitura** (ex.: `unitsSoldToday` derivado de pedidos do dia — DB-03 / stats) |
 
-Resposta de lista (cada item): campos de `products` + caps do dia operacional atual.
+Resposta de lista: campos de `products` conforme [DB-02 § 1](DB-02-disponibilidade-itens.md).
 
 ### 11.3 Gerente — CRUD
 
 | Método | Rota | Corpo / notas |
 |--------|------|----------------|
-| POST | `/store/products` | JSON: `{ name, description?, categoryId, unitPriceCents, defaultDailyOrderLimit?, sortOrder?, availability? }` — default `availability = DISPONIVEL`. Opcional **multipart** `image` no mesmo request → grava `image_url` |
-| PATCH | `/store/products/{productId}` | Parcial: `name`, `description`, `categoryId`, `unitPriceCents`, `defaultDailyOrderLimit`, `sortOrder`, `availability` (pausa, bloqueio, arquivar, reativar) |
+| POST | `/store/products` | JSON: `{ name, description?, categoryId, unitPriceCents, sortOrder?, availability? }` — default `availability = DISPONIVEL`. Opcional **multipart** `image` no mesmo request → grava `image_url` |
+| PATCH | `/store/products/{productId}` | Parcial: `name`, `description`, `categoryId`, `unitPriceCents`, `sortOrder`, `availability` (pausa, bloqueio, arquivar, reativar) |
 | POST | `/store/products/{productId}/image` | Multipart `image` — substitui foto; retorna `imageUrl` |
 | DELETE | `/store/products/{productId}` | **Hard delete** só se gerente confirmar; pedidos antigos mantêm snapshot em `order_items`. Preferir `availability = ARQUIVADO` para ocultar |
 
 **Autorização:** `GERENTE_LOJA` para escrita; cozinha **não** chama estas rotas.
 
-### 11.4 Gerente — limite efetivo só hoje
-
-| Método | Rota | Corpo |
-|--------|------|-------|
-| PATCH | `/store/products/{productId}/daily-cap` | `{ "effectiveLimit": 40 }` ou `{ "effectiveLimit": null }` (ilimitado **só hoje**) |
-
-Upsert em `product_daily_caps` para `(store_id, product_id, operational_date = hoje)`. Não altera `products.default_daily_order_limit`.
-
-**Erros comuns:**
-
-| HTTP | Código | Quando |
-|------|--------|--------|
-| 404 | `PRODUCT_NOT_FOUND` | ID fora da loja |
-| 409 | `DAILY_LIMIT_BELOW_SOLD` | Reduzir `effectiveLimit` abaixo de `units_sold` |
-| 422 | `INVALID_CATEGORY` | `categoryId` de outra loja |
-
-### 11.5 Checkout — validação de produto e entrega
+### 11.4 Checkout — validação de produto e entrega
 
 `POST /orders` (corpo detalhado em DB-04 / HAPPY-21) resolve cada linha por `productId` + `quantity`:
 
 - `availability` deve ser `DISPONIVEL`
 - **Loja:** **não** exige `ABERTA` se `shoppingSessionId` válido ([DB-04 § 7](DB-04-catalogo-checkout-cliente.md)); senão exige `ABERTA` → senão `409 STORE_CLOSED`
-- se houver teto: `quantity <= remainingToday` (lock row `product_daily_caps` + incremento `units_sold` na mesma transação)
+- **sem** validação de teto diário, `units_sold` ou estoque por produto (premissa [DB-02 § 1.2](DB-02-disponibilidade-itens.md))
 - `delivery_fee_cents := stores.fixed_delivery_fee_cents` (snapshot; **sem** lookup de CEP/zona)
 - corpo/cabeçalho: `shoppingSessionId` quando a loja já fechou após a entrada do cliente
 
 Endereço de entrega é obrigatório (validação de campos — [FLUX-SAD-07](../fluxos/sadPaths/FLUX-SAD-07-endereco-vazio.md)); CEP **não** altera a taxa.
 
-Falha → 409 `ITEM_UNAVAILABLE`, `DAILY_LIMIT_EXCEEDED` ou `STORE_CLOSED`
+Falha → 409 `ITEM_UNAVAILABLE` ou `STORE_CLOSED`
 
-### 11.6 Gerente — configuração da loja (taxa de entrega)
+### 11.5 Gerente — configuração da loja (taxa de entrega)
 
 | Método | Rota | Corpo |
 |--------|------|-------|

@@ -29,13 +29,8 @@ Se o gerente **apagou** o produto, a linha sai do carrinho com o aviso **"Este p
 
 > **Impacto:** Médio. Nada é cobrado pelo item indisponível. A linha cinza explica o motivo; o sistema não apaga a pausa em silêncio.
 
+Se o cliente mantiver a linha e tentar **Finalizar**, o servidor recusa com **`ITEM_UNAVAILABLE`** — [FLUX-SAD-03-item-checkout](FLUX-SAD-03-item-checkout.md).
+
 ---
 
-## Limite diário esgotado (item ainda `DISPONIVEL`)
-
-| # | Quem | O que acontece |
-|---|------|----------------|
-| 1 | 👤 Cliente | Tinha 3× X-Burger no carrinho quando o **restante do dia** era 3 |
-| 2 | Sistema | Outros pedidos ou redução do gerente deixam **restante menor que a quantidade** no carrinho |
-| 3 | Sistema | App limita **+** no carrinho ao restante; linha pode exibir *"Restam N unidades hoje"* |
-| 4 | 👤 Cliente | Se ainda tentar finalizar com quantidade inválida, o servidor recusa com **`DAILY_LIMIT_EXCEEDED`** — [FLUX-SAD-24-limite-dia](FLUX-SAD-24-limite-dia.md) · [FLUX-SAD-03-item-checkout](FLUX-SAD-03-item-checkout.md) |
+[← Índice sad path](README.md)

@@ -7,6 +7,8 @@
 
 Alinhado a [`pitch_delivery.md`](../pitch_delivery.md).
 
+Stack do monólito (REST + JPA): [INF-05 — Kotlin, Spring Boot, JPA, Hibernate, PostgreSQL](INF-05-kotlin-spring-jpa.md).
+
 ---
 
 ## 1. Decisão

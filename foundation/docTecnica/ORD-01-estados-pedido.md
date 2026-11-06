@@ -16,13 +16,13 @@ Alinhado a [`pitch_delivery.md`](../pitch_delivery.md). O nome do estado inicial
 | `RECEBIDO` | Pedido criado e pago. Já está na fila da cozinha. Ninguém aceitou ainda | Sistema, no checkout |
 | `EM_PREPARO` | Cozinha aceitou; itens visíveis no painel direito do KDS para conferência e embalagem | 👨‍🍳 Cozinha ou 🔑 Gerente |
 | `PRONTO` | Preparo concluído; aguardando motoboy no balcão / fila do app | 👨‍🍳 Cozinha ou 🔑 Gerente |
-| `SAIU_PARA_ENTREGA` | Motoboy **aceitou** o pedido no app (após conferir `display_number` na embalagem) | 🛵 Motoboy |
+| `SAIU_PARA_ENTREGA` | Motoboy **aceitou** o pedido no app (após conferir `display_number` e nome do cliente no **recibo** grampeado no pacote) | 🛵 Motoboy |
 | `ENTREGUE` | Entrega confirmada | 🛵 Motoboy |
 | `CANCELADO` | Encerrado com estorno, se o pagamento estava confirmado | 👤 Cliente ou 🔑 Gerente, conforme a janela |
 
 Não existe `RECUSADO`, `PENDENTE` nem `ACEITO`. Aceitar o pedido da fila é a transição `RECEBIDO → EM_PREPARO`.
 
-> **Pré-condição para aceite no app motoboy (`POST /orders/{id}/take`):** turno ativo (`motoboyAtivo = true`); pedido `PRONTO` sem motoboy; motoboy confere **`display_number`** na embalagem. UI: botão **Aceitar pedido** → tela de acompanhamento. Ver [FLUX-HAPPY-20-motoboy-app](../fluxos/happypaths/FLUX-HAPPY-20-motoboy-app.md) · INF-04 § 2.
+> **Pré-condição para aceite no app motoboy (`POST /orders/{id}/take`):** turno ativo (`motoboyAtivo = true`); pedido `PRONTO` sem motoboy; motoboy confere **`display_number`** e **nome do cliente** no **recibo** grampeado no pacote (e com a fila no app). UI: botão **Aceitar pedido** → tela de acompanhamento. Ver [FLUX-HAPPY-20-motoboy-app](../fluxos/happypaths/FLUX-HAPPY-20-motoboy-app.md) · INF-04 § 2.
 
 ---
 
@@ -75,6 +75,7 @@ Um único `order_id` para o cliente. O motivo `IMPREVISTO_ENTREGA` aparece na **
 | `incident_message` | mensagem do gerente para o cliente (gravada no pedido; exibida via WebSocket) |
 | `cancelamento_bloqueado` | `true` até `ENTREGUE` — cliente não pode cancelar |
 | `remake_seq` | incrementa |
+| `last_queue_started_at` | `now()` — reinicia a medição da **espera até a cozinha pegar** o pedido de novo ([DB-04 § 2.5](DB-04-catalogo-checkout-cliente.md)) |
 | `payment_status` | permanece `CONFIRMADO` |
 
 **Status do motoboy após imprevisto confirmado:** o motoboy envolvido retorna automaticamente a `DISPONIVEL` (turno continua ativo; ele pode assumir outros pedidos). O sistema grava `INCIDENT_CONFIRMED` em `order_events` com o `motoboy_id` antes de zerálo no pedido.
@@ -130,9 +131,9 @@ Protocolo STOMP: INF-02 § 4 (`/accept` → preparar, `/ready` → concluir).
 | Origem | `prep_started_at` (servidor) — UI atualiza a cada segundo |
 | Ao concluir | Timer **congela** no valor final; persiste em `orders.prep_duration_seconds` |
 
-### 5.4 Campos de tempo de preparo
+### 5.4 Campos de tempo de preparo e de ciclo
 
-Colunas `prep_started_at`, `prep_completed_at`, `prep_duration_seconds` — esquema completo do pedido: [DB-04 § 2](DB-04-catalogo-checkout-cliente.md).
+Colunas de tempo no pedido (fila cozinha, preparo, balcão, entrega, total): [DB-04 § 2.2](DB-04-catalogo-checkout-cliente.md) e [DB-04 § 2.5](DB-04-catalogo-checkout-cliente.md) (quando cada duração é gravada).
 
 ### 5.5 KDS — painéis (resumo)
 
@@ -140,9 +141,32 @@ Colunas `prep_started_at`, `prep_completed_at`, `prep_duration_seconds` — esqu
 |--------|----------|
 | Esquerda | Linhas `RECEBIDO` + `EM_PREPARO`; contador; seleção por clique (destaque visual) |
 | Direita | Detalhe do **selecionado**: `display_number`, timer (se `EM_PREPARO`), linhas `order_items`, **Preparar** (↖) / **Concluir preparo** (↗) |
-| Embalagem | Anotar `display_number` antes de concluir |
+| Embalagem | **Maquininha** da cozinha imprime o recibo (número, cliente, itens/valores, total, data); **grampeado** ao pacote antes de **Concluir preparo** |
 
-Layout: [INF-04-ui-operacao-cliente.md](INF-04-ui-operacao-cliente.md) § 1.
+Layout: [INF-07](INF-07-ui-cozinha-kds.md) (detalhe) · sumário [INF-04 § 1](INF-04-ui-operacao-cliente.md).
+
+### 5.6 Motoboy — timers na entrega
+
+| Momento | UI (app motoboy) |
+|---------|------------------|
+| Após **Aceitar pedido** | Cronômetro desde `dispatch_started_at` até **Finalizar entrega** (pedido `SAIU_PARA_ENTREGA`) |
+| Pedido `ENTREGUE` | Timer congela; valor final fica em `delivery_duration_seconds` no servidor |
+
+Detalhe de telas: [INF-08](INF-08-ui-motoboy.md).
+
+### 5.7 Painel do gerente — o que medir em cada estado
+
+Objetivo: o gerente ver **em qual etapa** o pedido está e se **essa etapa** está demorando (sem depender só do histórico após `ENTREGUE`).
+
+| `status` | Coluna de **tempo ao vivo** na tabela (cronômetro até próxima transição) | Base |
+|----------|----------------------------------------------------------------------|------|
+| `RECEBIDO` | **Espera cozinha** | `now - last_queue_started_at` |
+| `EM_PREPARO` | **Em preparo** | `now - prep_started_at` |
+| `PRONTO` | **Espera motoboy** (balcão) | `now - prep_completed_at` |
+| `SAIU_PARA_ENTREGA` | **Em entrega** | `now - dispatch_started_at` |
+| `ENTREGUE` / `CANCELADO` | — (mostrar **durações gravadas**, não cronômetro) | colunas `*_seconds` e timestamps · índice coluna a coluna [DB-04 § 2.6](DB-04-catalogo-checkout-cliente.md) |
+
+Layout da tabela e rodapé de estatísticas: [INF-06](INF-06-ui-gerente.md) § 2.
 
 ---
 

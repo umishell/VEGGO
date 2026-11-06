@@ -23,18 +23,9 @@ Na lista **Cardápio**, o gerente filtra por **categoria** (combobox) e busca po
 
 ---
 
-## Limite diário de pedidos (não é estoque)
+## Estatísticas (somente leitura)
 
-| # | Quem | O que acontece |
-|---|------|----------------|
-| 1 | 🔑 Gerente | No CRUD do item, define **Limite padrão por dia** (`default_daily_order_limit`) — quantas unidades podem ser vendidas por dia operacional; renova sozinho à meia-noite |
-| 2 | 🔑 Gerente | Na operação do dia, vê **vendido / restante / limite efetivo de hoje** |
-| 3 | 🔑 Gerente | Pode **aumentar ou reduzir só hoje** — `PATCH /store/products/{id}/daily-cap` (`effective_limit`) — ex.: sobrou insumo → sobe o teto; estragou faltou → baixa sem mudar o padrão de amanhã |
-| 4 | 👤 Cliente | No cardápio/carrinho, quantidade máxima respeita o **restante**; checkout recusa se estourar (409) |
-| 5 | 👨‍🍳 Cozinha | Avisa o gerente se faltou insumo — **não** altera limite nem disponibilidade no sistema |
-| 6 | 👨‍🍳 → 🔑 | Se **não dá** para produzir um item (falta ingrediente), cozinha **avisa o gerente**; o gerente aplica **Pausar para o dia** (`PAUSADO_DIA`) — cinza, sem depender só de zerar o limite numérico |
-
-> Limite diário **conta pedidos**, não grama/litro em estoque. Ver DB-02 § 1.2. Checkout recusado: [FLUX-SAD-24-limite-dia](../sadPaths/FLUX-SAD-24-limite-dia.md).
+O gerente **não** define quantas unidades de cada item podem sair por dia no app. Volume vendido, ranking e métricas do cardápio vêm de **pedidos históricos** ([DB-03 § 6.2](../../docTecnica/DB-03-telemetria.md) · [INF-04 § 5](../../docTecnica/INF-04-ui-operacao-cliente.md)) — para planejamento fora do fluxo de checkout.
 
 ---
 

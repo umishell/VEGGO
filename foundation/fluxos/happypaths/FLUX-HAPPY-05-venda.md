@@ -26,18 +26,18 @@ Cliente monta carrinho → finaliza pedido → cozinha prepara → motoboy entre
 | 4 | 👤 Cliente | Escolhe **forma de pagamento**: uma salva (autofill) ou **cadastra na hora** (mock — ex.: rótulo + últimos dígitos simulados) |
 | 5 | 👤 Cliente | Vê a **taxa de entrega fixa** da loja no resumo (mesmo valor para qualquer endereço) |
 | 6 | 👤 Cliente | Clica em **Finalizar Pedido** |
-| 7 | Sistema | Revalida itens, loja e limites diários |
+| 7 | Sistema | Revalida itens, loja (sessão) e pagamento |
 | 8 | Sistema | Confirma **pagamento simulado** e registra pedido + cópia do endereço |
 | 9 | 👤 Cliente | Vê **"Pedido recebido!"** com **`display_number`** — detalhe em [FLUX-HAPPY-21-checkout-pagamento](FLUX-HAPPY-21-checkout-pagamento.md) |
 | 10 | 👨‍🍳 Cozinha | Pedido na **fila esquerda** do KDS ([FLUX-HAPPY-11-item-cozinha](FLUX-HAPPY-11-item-cozinha.md)) |
-| 11 | 👨‍🍳 Cozinha | Seleciona pedido na lista → **Preparar** → prepara → **Concluir preparo** → anota `display_number` na embalagem ([FLUX-HAPPY-11](FLUX-HAPPY-11-item-cozinha.md)) |
+| 11 | 👨‍🍳 Cozinha | Seleciona pedido na lista → **Preparar** → prepara → **maquininha** imprime **recibo** (`display_number`, cliente, itens/valores, total, data) e **grampeia** no pacote → **Concluir preparo** ([FLUX-HAPPY-11](FLUX-HAPPY-11-item-cozinha.md)) |
 | 12 | 👤 Cliente | Timeline: **"Em preparo"** |
 | 13 | 🛵 Motoboy | **Fila de prontos** com `display_number` |
-| 14 | 🛵 Motoboy | Confere embalagem, **Aceitar pedido** → **Acompanhamento** (nome, telefone, WhatsApp, Waze, Maps) |
+| 14 | 🛵 Motoboy | Confere **`display_number`** e **nome** no **recibo** do pacote com a fila no app, **Aceitar pedido** → **Acompanhamento** (nome, telefone, WhatsApp, Waze, Maps) |
 | 14a | Sistema | Exibe na tela de entrega ativa do motoboy: endereço completo (rua, número, complemento, bairro, ponto de referência) + **atalhos de navegação** e **atalho de contato** |
 | 14b | 🛵 Motoboy | Toca em **🗺️ Waze** ou **🗺️ Google Maps** — o app de navegação escolhido abre com o destino já preenchido |
 | 14c | 🛵 Motoboy | Pode tocar em **💬 WhatsApp do cliente** — abre conversa no WhatsApp com mensagem de contexto pré-preenchida |
-| 15 | 👤 Cliente | Vê na timeline: **"Pedido saiu para entrega"** 🚀 + **🛵 WhatsApp do motoboy** (e **Fale com a loja** continua visível) |
+| 15 | 👤 Cliente | Vê na timeline: **"Pedido saiu para entrega"** 🚀 — **💬 Fale com a loja** continua visível (WhatsApp da loja com texto do pedido; sem link direto ao motoboy) |
 | 16 | 🛵 Motoboy | **Finalizar entrega** → volta à fila de prontos |
 | 17 | 👤 Cliente | Timeline: **"Pedido entregue! ✅"** |
 
@@ -55,7 +55,7 @@ CLIENTE              COZINHA              MOTOBOY
    │                    │           assume e sai
    │                    │      [nav + contato] │
    🚀 saiu p/ entrega   │                    │
-   [botão: contatar]    │                    │
+   [Fale com a loja]    │                    │
    ✅ entregue           │                    │
 ```
 
@@ -73,14 +73,13 @@ CLIENTE              COZINHA              MOTOBOY
 
 ---
 
-**Atalho de contato para o cliente (tela de timeline — `SAIU_PARA_ENTREGA`):**
+**Atalho de contato para o cliente (timeline — todos os estados, inclusive `SAIU_PARA_ENTREGA`):**
 
 | Atalho | Link | Quando aparece | Quando some |
 |--------|------|----------------|-------------|
-| 💬 **Fale com a loja** | `wa.me/[phone_loja]` | A qualquer momento | Nunca some |
-| 🛵 **Contatar motoboy** | `wa.me/[phone_motoboy]?text=Olá,+sou+o+cliente+do+pedido+%23[id]...` | Quando `SAIU_PARA_ENTREGA` | Quando `ENTREGUE` |
+| 💬 **Fale com a loja** | `wa.me/[phone_loja]?text=…+pedido+%23[display_number]…` | Sempre na timeline | Nunca some |
 
-> Os links são construídos pelo backend via `GET /orders/{id}/contact-links` (FGAC: só o dono do pedido; só retorna `motoboy` quando `SAIU_PARA_ENTREGA`).
+> O backend monta o texto via `GET /orders/{id}/contact-links` → `store` (FGAC: só o dono do pedido). O **cliente não** recebe `motoboy` nessa resposta — contato com o entregador é mediado pela loja ou pelo próprio motoboy no app (`customer`).
 
 ---
 

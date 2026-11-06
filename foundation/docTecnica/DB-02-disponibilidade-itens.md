@@ -23,7 +23,6 @@ Entidade **única** do cardápio: gerente faz CRUD; app cliente lista; checkout 
 | `unit_price_cents` | int | Preço unitário em centavos (≥ 0) |
 | `image_url` | varchar(2048), nulo | URL pública da foto (upload gera URL — INF-02 § 11) |
 | `availability` | enum | `DISPONIVEL`, `PAUSADO_DIA`, `BLOQUEADO`, `ARQUIVADO` |
-| `default_daily_order_limit` | int, nulo | Padrão de unidades vendidas por dia operacional; ver § 1.2 |
 | `sort_order` | int, default 0 | Ordem **dentro da categoria** no app cliente (empate: `name`) |
 | `created_at` | timestamptz | Auditoria |
 | `updated_at` | timestamptz | Auditoria |
@@ -49,43 +48,19 @@ Só o gerente altera `PAUSADO_DIA`, `BLOQUEADO`, arquiva, desarquiva e executa `
 
 ---
 
-## 1.2 Limite diário de pedidos por produto (não é estoque)
+## 1.2 Disponibilidade e estoque no MVP
 
-**Não há módulo de estoque** (sem saldo físico, lote ou entrada/saída de mercadoria). Há **controle de quantas unidades de cada produto podem ser vendidas no dia operacional** — ferramenta de planejamento para a cozinha estimar insumos; o sistema só conta **pedidos confirmados**.
+**Não há módulo de estoque** no sistema (sem saldo físico, lote ou entrada/saída). **Não há** teto diário por produto, tabela `product_daily_caps`, contagem `units_sold` por SKU nem “limite padrão por dia” no CRUD — o gerente **não** controla quantas unidades de cada item podem sair no dia pelo app.
 
-### Tabelas
-
-**`products` — padrão que renova todo dia:**
-
-| Coluna | Tipo | Regra |
-|--------|------|-------|
-| `default_daily_order_limit` | int, nulo | Máximo de **unidades** (soma de `quantity` em pedidos pagos) permitidas **por dia operacional**. `NULL` = sem teto (ilimitado no dia) |
-
-**`product_daily_caps` — cap efetivo do dia (pode divergir do padrão):**
-
-| Coluna | Tipo | Regra |
-|--------|------|-------|
-| `store_id` | UUID | FK `stores` |
-| `product_id` | UUID | FK `products` |
-| `operational_date` | date | Data civil no fuso `stores.timezone` (mesma regra do painel — DB-03 § 1.1) |
-| `effective_limit` | int, nulo | Teto do **dia atual**; gerente altera a qualquer momento. Job da meia-noite copia de `default_daily_order_limit` |
-| `units_sold` | int, default 0 | Unidades já comprometidas em pedidos com pagamento confirmado neste dia (incrementa no checkout atômico) |
-
-**PK / unicidade:** `UNIQUE (store_id, product_id, operational_date)`.
-
-**Restante do dia:** `remaining = effective_limit - units_sold` quando `effective_limit` não é nulo; senão ilimitado.
-
-### Comportamento
+**Premissa implícita:** com produto em **`DISPONIVEL`**, assume-se **insumos e produção suficientes** para honrar qualquer quantidade pedida. O **`POST /orders`** valida **`availability`**, **sessão de compra / loja**, **pagamento** e **endereço** (DB-04 · INF-02 § 11.5) — **não** recheca “ainda há estoque para esta quantidade”.
 
 | Ação | Quem | Efeito |
 |------|------|--------|
-| Definir padrão diário | 🔑 Gerente | Edita `default_daily_order_limit` no CRUD do cardápio |
-| Ajustar só **hoje** | 🔑 Gerente | `PATCH /store/products/{id}/daily-cap` → `effective_limit` (aumenta se sobrou insumo; reduz se faltou ou estragou) — **libera ou restringe pedidos na hora**, sem mudar o padrão de amanhã |
-| Meia-noite (fuso loja) | Job | Nova linha ou reset: `effective_limit := default_daily_order_limit`, `units_sold := 0` por produto. Independente do job que desfaz `PAUSADO_DIA` |
-| Checkout | Cliente | Exige `availability = DISPONIVEL`, loja `ABERTA` e, se houver teto, `quantity <= remaining`. Estoura → HTTP 409 (`ITEM_UNAVAILABLE` ou `DAILY_LIMIT_EXCEEDED`). Fluxos: [FLUX-SAD-03](../fluxos/sadPaths/FLUX-SAD-03-item-checkout.md) · [FLUX-SAD-24](../fluxos/sadPaths/FLUX-SAD-24-limite-dia.md) |
-| Ingrediente acabou / não dá para produzir | 👨‍🍳 avisa · 🔑 age | Cozinha **não** pausa cardápio: o gerente coloca **`PAUSADO_DIA`** (“não produzido hoje”, cinza). Ver [FLUX-HAPPY-11-item-cozinha](../fluxos/happypaths/FLUX-HAPPY-11-item-cozinha.md) (KDS) |
+| Checkout | Cliente | `availability = DISPONIVEL`; sem validação de limite diário ou estoque por linha |
+| Item não vendável | — | `PAUSADO_DIA`, `BLOQUEADO`, `ARQUIVADO` → `409 ITEM_UNAVAILABLE` — [FLUX-SAD-03](../fluxos/sadPaths/FLUX-SAD-03-item-checkout.md) |
+| Ingrediente acabou / não dá para produzir | 👨‍🍳 avisa · 🔑 age | Gerente ajusta **`PAUSADO_DIA`** / **`BLOQUEADO`** no cardápio — [FLUX-HAPPY-11-item-cozinha](../fluxos/happypaths/FLUX-HAPPY-11-item-cozinha.md) |
 
-Painel **Cardápio** do gerente exibe **padrão**, **vendido hoje**, **restante** e **limite efetivo de hoje**, com **filtro por categoria** (INF-04 § 4). Cozinha no KDS vê apenas pedidos (não CRUD de disponibilidade).
+**Cardápio (gerente):** CRUD + **filtro por categoria** (INF-04 § 4). **Estatísticas** (ex.: unidades vendidas hoje, ranking por período) são **somente leitura**, derivadas de `orders` / `order_items` — [DB-03](DB-03-telemetria.md). Cozinha no KDS vê pedidos, não CRUD de cardápio.
 
 Job:
 

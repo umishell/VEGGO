@@ -11,7 +11,7 @@
 **Veja também:** [FLUX-HAPPY-16-turno](FLUX-HAPPY-16-turno.md) · [FLUX-HAPPY-05-venda](FLUX-HAPPY-05-venda.md) · [INF-04-ui-operacao-cliente](../../docTecnica/INF-04-ui-operacao-cliente.md) § 2
 
 ```
-Fila PRONTO (display_number) → conferir embalagem → Aceitar pedido → acompanhamento → Finalizar entrega → volta à fila
+Fila PRONTO (display_number) → conferir recibo no pacote (display_number + nome) → Aceitar pedido → acompanhamento → Finalizar entrega → volta à fila
 ```
 
 ---
@@ -21,8 +21,8 @@ Fila PRONTO (display_number) → conferir embalagem → Aceitar pedido → acomp
 | # | Quem | O que acontece |
 |---|------|----------------|
 | 1 | 🛵 Motoboy | Com turno ativo, vê lista de pedidos **`PRONTO`** com **`display_number`** em destaque |
-| 2 | 👨‍🍳 Cozinha | Já anotou o mesmo código na embalagem ([FLUX-HAPPY-11-item-cozinha](FLUX-HAPPY-11-item-cozinha.md)) |
-| 3 | 🛵 Motoboy | No balcão, compara código do **pacote** com o app, seleciona o pedido correto |
+| 2 | 👨‍🍳 Cozinha | Já **grampeou o recibo** no pacote: mesmo **`display_number`**, nome do cliente, itens/valores, total e data ([FLUX-HAPPY-11-item-cozinha](FLUX-HAPPY-11-item-cozinha.md)) |
+| 3 | 🛵 Motoboy | No balcão, confere **`display_number`** e **nome do cliente** no **recibo** com a **fila** no app, seleciona o pedido correto |
 | 4 | 🛵 Motoboy | Toca **Aceitar pedido** |
 | 5 | Sistema | `POST /orders/{id}/take` → `SAIU_PARA_ENTREGA`; abre **Acompanhamento da entrega** |
 

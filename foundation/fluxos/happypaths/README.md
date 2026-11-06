@@ -32,7 +32,7 @@ O número segue a ordem do acontecimento. A palavra depois do número é o tema.
 | [FLUX-HAPPY-15-disputa](FLUX-HAPPY-15-disputa.md) | Dois motoboys disputam o mesmo pedido — um assume | 🛵 🛵 |
 | [FLUX-HAPPY-16-turno](FLUX-HAPPY-16-turno.md) | Motoboy encerra turno (fica inativo) | 🛵 |
 | [FLUX-HAPPY-20-motoboy-app](FLUX-HAPPY-20-motoboy-app.md) | Motoboy — prontos, aceite no balcão, acompanhamento | 🛵 |
-| [FLUX-HAPPY-17-whatsapp](FLUX-HAPPY-17-whatsapp.md) | **nos contacte** (WhatsApp loja) + timeline (loja e motoboy) | 👤 |
+| [FLUX-HAPPY-17-whatsapp](FLUX-HAPPY-17-whatsapp.md) | **Fale conosco** + timeline (cliente → loja; motoboy → cliente) | 👤 |
 | [FLUX-HAPPY-18-painel](FLUX-HAPPY-18-painel.md) | Gerente acompanha pedidos do dia em tempo real | 🔑 |
 | [FLUX-HAPPY-19-stats](FLUX-HAPPY-19-stats.md) | Gerente acessa estatísticas e telemetria da operação | 🔑 |
 

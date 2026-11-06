@@ -39,7 +39,7 @@ Concluir → PRONTO → some da cozinha → motoboy vê na fila
 | 3 | 👨‍🍳 Cozinha | Clica **Preparar** (↖) |
 | 4 | Sistema | `RECEBIDO → EM_PREPARO`; timeline cliente **Em preparo**; timer inicia; estilo “em preparo” na lista e no detalhe; **Preparar** some; **Concluir preparo** aparece |
 | 5 | 👨‍🍳 Cozinha | Pode selecionar **outra linha** na lista para alternar detalhe (vários pedidos em preparo ao mesmo tempo) |
-| 6 | 👨‍🍳 Cozinha | Embala e anota **`display_number`** no pacote |
+| 6 | 👨‍🍳 Cozinha | Embala; **maquininha** (térmica) imprime o **recibo** com **`display_number`**, nome do cliente, valores por item, total e data da compra; **grampeia** ao pacote |
 | 7 | 👨‍🍳 Cozinha | Clica **Concluir preparo** (↗) |
 | 8 | Sistema | Timer congela; grava `prep_duration_seconds`; `→ PRONTO`; linha e detalhe **somem** do KDS |
 | 9 | 🛵 Motoboy | Pedido na **fila de prontos** com o mesmo `display_number` |

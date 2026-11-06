@@ -24,10 +24,10 @@ Gerente abre o painel do dia → vê todos os pedidos com estado colorido
 |---|------|----------------|
 | 1 | 🔑 Gerente | Abre **Painel → Pedidos do dia** |
 | 2 | Sistema | Lista todos os pedidos **criados hoje** (dia operacional da loja), por ordem de criação (mais recente no topo) |
-| 3 | 🔑 Gerente | Vê cada pedido com: número, cliente, itens resumidos, horário, valor, **tempo preparo** (mm:ss, se concluído), estado e cor |
+| 3 | 🔑 Gerente | Vê cada pedido com: número, cliente, itens resumidos, horário, valor, **estado** e **cronômetro da fase atual** (fila cozinha, preparo, balcão ou rua — [ORD-01 § 5.7](../../docTecnica/ORD-01-estados-pedido.md)) e colunas de **tempos já fechados** quando existirem ([INF-06 § 2.2](../../docTecnica/INF-06-ui-gerente.md)) |
 | 4 | 🔑 Gerente | Qualquer mudança de estado em qualquer pedido aparece na tela **automaticamente**, sem recarregar |
 | 5 | 🔑 Gerente | Clica em um pedido para ver o detalhe completo — itens, endereço, histórico de estados |
-| 6 | 🔑 Gerente | Abaixo da tabela, vê **estatísticas do período** (tempo médio preparo, pedidos hoje/semana/mês, média/dia, p95 preparo) — [DB-03 § 6.1](../../docTecnica/DB-03-telemetria.md) · [INF-04 § 5](../../docTecnica/INF-04-ui-operacao-cliente.md) |
+| 6 | 🔑 Gerente | Abaixo da tabela, vê **estatísticas do período** (médias de fila→prep., preparo, balcão, entrega, total; volume; p95 preparo; cancelamentos) — [DB-03 § 6.1](../../docTecnica/DB-03-telemetria.md) · [INF-06 § 2.4](../../docTecnica/INF-06-ui-gerente.md) |
 
 ---
 

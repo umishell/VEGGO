@@ -19,7 +19,7 @@ O app não implementa chat interno. Todos os contatos entre cliente, motoboy e l
 |-------|--------|------|-------------|---------------|
 | `whatsapp_number` | `stores` | string (ex: `"5511999999999"`) | Sim — sem ele o botão "Fale com a loja" fica oculto | Gerente em **Configurações → Loja** |
 | `phone` | `users` (clientes) | string, nulo | Recomendado — sem ele o botão "WhatsApp do cliente" fica oculto para o motoboy | Cliente no cadastro |
-| `phone` | `users` (motoboys) | string | Obrigatório para motoboy — sem ele o botão "Contatar motoboy" fica oculto para o cliente | Gerente ao criar o usuário motoboy |
+| `phone` | `users` (motoboys) | string | Obrigatório para motoboy — sem ele o botão **WhatsApp do cliente** fica oculto na tela de entrega do motoboy | Gerente ao criar o usuário motoboy |
 
 > O campo `phone` de clientes e motoboys fica em `users.phone`. Motoboys são usuários como qualquer outro — só o perfil difere.
 
@@ -29,7 +29,7 @@ O app não implementa chat interno. Todos os contatos entre cliente, motoboy e l
 
 ### 3.1 Loja — contato geral (sem pedido)
 
-Usado na tela **nos contacte** / **Fale conosco** do `app-cliente` (menu ou perfil).
+Usado na tela **Fale conosco** do `app-cliente` (menu ou perfil).
 
 ```
 GET /store/contact-links
@@ -47,12 +47,15 @@ Authorization: Bearer {token}   // CLIENTE
 | Regra | Detalhe |
 |-------|---------|
 | Fonte | `stores.whatsapp_number` da loja única do MVP |
+| Texto (`?text=`) | Genérico (ex.: ajuda no app) — **não** inclui número de pedido; o cliente identifica-se na conversa |
 | Sem número | HTTP 200 com corpo vazio ou flag `storeWhatsApp: null` — UI mostra “Contato indisponível” |
 | Cache | App pode cachear até logout; gerente alterar número invalida na próxima abertura da tela |
 
 > Alternativa equivalente: `GET /stores/current` incluir `_links.storeWhatsApp` (HATEOAS). MVP: endpoint dedicado ou campo no recurso loja pública do cliente.
 
-### 3.2 Pedido — loja + motoboy (acompanhamento)
+### 3.2 Pedido — loja (acompanhamento)
+
+O **cliente** fala com a **loja** em todos os estados do pedido. O link **`store`** aponta para o **mesmo número** da loja que `GET /store/contact-links`, mas o backend inclui no **`?text=`** o **número do pedido** (`display_number`, ex. `#42`) para o gerente reconhecer o contexto — diferente do **Fale conosco** geral (§ 3.1), onde não há pedido. **O cliente não recebe** link direto para o WhatsApp do motoboy; só o **motoboy alocado** obtém `customer` para falar com o cliente.
 
 ```
 GET /orders/{orderId}/contact-links
@@ -63,7 +66,7 @@ Authorization: Bearer {token}
 
 | Perfil | Estado do pedido | Links retornados |
 |--------|-----------------|-----------------|
-| `CLIENTE` (dono) | Qualquer | `store` sempre; `motoboy` só em `SAIU_PARA_ENTREGA` |
+| `CLIENTE` (dono) | Qualquer | `store` sempre (texto com `#display_number` do pedido) |
 | `MOTOBOY` (alocado) | `SAIU_PARA_ENTREGA` | `customer` |
 | `GERENTE_LOJA` | Qualquer | `store`, `customer`, `motoboy` |
 | Qualquer outro | — | 403 |
@@ -72,8 +75,7 @@ Authorization: Bearer {token}
 
 ```json
 {
-  "store":   "https://wa.me/5511999990000",
-  "motoboy": "https://wa.me/5511888887777?text=Ol%C3%A1%2C+sou+o+cliente+do+pedido+%23abc123.+Posso+falar%3F"
+  "store": "https://wa.me/5511999990000?text=Ol%C3%A1%2C+sobre+o+pedido+%2342+%28VEGGO%29."
 }
 ```
 

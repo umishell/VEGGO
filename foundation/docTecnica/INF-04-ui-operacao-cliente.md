@@ -1,10 +1,12 @@
-# INF-04 — Layout de telas (KDS, motoboy, cliente, gerente)
+# INF-04 — Layout de telas (KDS, motoboy, cliente, gerente) — sumário
 
 **Referenciado por:** fluxos HAPPY-09, HAPPY-10, HAPPY-11, HAPPY-18, HAPPY-19, HAPPY-20, HAPPY-21, HAPPY-22 · [ORD-01](ORD-01-estados-pedido.md) § 5
 
 *[← Índice docTecnica](README.md)*
 
 Especificação de **IHC + contrato de dados** para implementação Angular / Android. Regras de estado em ORD-01; transporte em INF-02; métricas em DB-03 § 6.
+
+**Detalhamento por perfil (MVP):** [INF-06](INF-06-ui-gerente.md) (gerente), [INF-07](INF-07-ui-cozinha-kds.md) (KDS cozinha), [INF-08](INF-08-ui-motoboy.md) (motoboy), [INF-09](INF-09-ui-cliente.md) (cliente).
 
 ---
 
@@ -31,9 +33,11 @@ Layout **dois painéis** (desktop/tablet horizontal). Vários pedidos **`EM_PREP
 | **Preparar** (↖ superior esquerdo) | Visível se selecionado `RECEBIDO`. STOMP accept → `EM_PREPARO`. Some após clicar |
 | **Concluir preparo** (↗ superior direito) | Visível se selecionado `EM_PREPARO`. STOMP ready → `PRONTO`; linha e detalhe **somem** |
 | **Linhas do pedido** | `order_items`: nome × qty (somente leitura). Sem ação por linha |
-| **Embalagem** | Antes de concluir, anotar `display_number` no pacote |
+| **Embalagem / recibo** | Antes de **Concluir preparo**: **maquininha** (térmica) da cozinha imprime o **recibo** com `display_number`, nome do cliente, valores por item, total e data da compra; **grampear** ao pacote |
 
 Estados `PRONTO`+ **não** aparecem no KDS (INF-02). **Nunca** auto-preparar ao selecionar ou ao abrir a tela.
+
+Especificação completa: [INF-07](INF-07-ui-cozinha-kds.md).
 
 ---
 
@@ -42,12 +46,14 @@ Estados `PRONTO`+ **não** aparecem no KDS (INF-02). **Nunca** auto-preparar ao 
 | Tela | Conteúdo |
 |------|----------|
 | **Fila de prontos** | Lista `PRONTO` com **`display_number`** em destaque (e opcional horário). Sem nome do cliente na lista |
-| Fluxo físico | Motoboy compara código na **embalagem** com o app → seleciona o pedido → **Aceitar pedido** |
+| Fluxo físico | Motoboy lê **`display_number`** e **nome do cliente** no **recibo grampeado** no pacote, confere com a **fila** no app → seleciona o pedido → **Aceitar pedido** |
 | **Aceitar pedido** | HTTP `POST /orders/{id}/take` (Idempotency-Key) → `SAIU_PARA_ENTREGA` + aloca motoboy → navega para **Acompanhamento da entrega** |
 | **Acompanhamento** | Nome do cliente, telefone, botão **WhatsApp**, **Waze**, **Google Maps** (`GET /orders/{id}/navigation-links`, `contact-links`) |
 | **Finalizar entrega** | `POST /orders/{id}/deliver` → `ENTREGUE` → volta à **Fila de prontos** |
 
 Rótulo **Aceitar pedido** no app motoboy — distinto do botão **Preparar** do KDS (INF-02 § 4).
+
+Especificação completa: [INF-08](INF-08-ui-motoboy.md).
 
 ---
 
@@ -58,11 +64,13 @@ Rótulo **Aceitar pedido** no app motoboy — distinto do botão **Preparar** do
 | Cardápio | Seções verticais por categoria (DB-04 § 1.1). Produto: foto, nome, preço, **+** quantidade. Dados: `GET /menu` (INF-02 § 11.1) |
 | Carrinho | Linhas editáveis (−/+, remover), subtotal |
 | Pagamento / checkout | Endereço: **combobox** endereços salvos + campos manuais; linha **Entrega** (taxa fixa); subtotal + total; pagamento: combobox cartões salvos ou novo; **Finalizar pedido** |
-| **nos contacte** | Tela dedicada (menu): botão **💬 WhatsApp da loja** → `GET /store/contact-links` |
-| **Acompanhar pedido** | Timeline + **💬 Fale com a loja** (sempre) + **🛵 WhatsApp do motoboy** só em `SAIU_PARA_ENTREGA` → `GET /orders/{id}/contact-links` |
+| **Fale conosco** | Tela dedicada (menu): botão **💬 WhatsApp da loja** → `GET /store/contact-links` |
+| **Acompanhar pedido** | Timeline + **💬 Fale com a loja** (sempre) → `GET /orders/{id}/contact-links` (`store`; texto com `#display_number`). Sem link direto ao motoboy para o cliente |
 | Pós-checkout | Sucesso **ou** tela/ modal de erro com código legível (`ITEM_UNAVAILABLE`, `PAYMENT_FAILED`, etc.) |
 
 Autocadastro, login e reset senha: INF-03 § 6.1–6.4. Contatos: [DB-01](DB-01-canal-atendimento.md) · [FLUX-HAPPY-17](../fluxos/happypaths/FLUX-HAPPY-17-whatsapp.md).
+
+Especificação completa: [INF-09](INF-09-ui-cliente.md).
 
 ---
 
@@ -74,14 +82,15 @@ Tela **Cardápio** — CRUD de `products` (DB-02 § 1). Transporte: INF-02 § 11
 |----------|--------|
 | **Filtro categoria** | Combobox alimentado por `GET /store/product-categories`. Opção **Todas** (`categoryId` omitido na query). Filtra a tabela via `GET /store/products?categoryId=…` |
 | **Busca** | Campo `q` (nome parcial) na mesma listagem |
-| **Colunas da tabela** | Nome, categoria (`display_name`), preço, `availability`, **limite padrão**, **vendido hoje**, **restante**, **limite efetivo hoje** |
-| **Novo / editar** | Formulário: nome, descrição, categoria, preço, foto (`POST …/image` ou multipart no create), limite padrão, ordem na categoria (`sort_order`) |
+| **Colunas da tabela** | Nome, categoria (`display_name`), preço, `availability`; opcional **vendido hoje** (só leitura, stats — DB-03) |
+| **Novo / editar** | Formulário: nome, descrição, categoria, preço, foto (`POST …/image` ou multipart no create), ordem na categoria (`sort_order`) |
 | **Ações rápidas** | Pausar dia, bloquear, arquivar, reativar → `PATCH …/products/{id}` (`availability`) — [FLUX-HAPPY-10](../fluxos/happypaths/FLUX-HAPPY-10-item-gerente.md) |
-| **Limite só hoje** | Controle numérico inline ou modal → `PATCH …/products/{id}/daily-cap` |
 | **Itens arquivados** | Aba ou toggle **Ver arquivados** → `GET /store/products?archivedOnly=true` |
 | **Rodapé estatísticas** | Bloco § 5 abaixo da tabela (itens mais vendidos, etc.) |
 
 Categorias MVP são **seed fixo** (DB-04 § 1.1); gerente **não** cria categorias — só associa produto a uma existente.
+
+Painel de pedidos, timers por fase e demais telas do gerente: [INF-06](INF-06-ui-gerente.md).
 
 ---
 
@@ -91,9 +100,9 @@ Padrão de UI: **tabela ou conteúdo principal** + **faixa inferior** (cards ou 
 
 | Tela gerente | Bloco inferior (exemplos) | API / doc |
 |--------------|---------------------------|-----------|
-| **Painel → Pedidos do day** | Tempo médio preparo (hoje); pedidos hoje / semana / mês; média pedidos/dia (7d, 30d); p95 tempo preparo; cancelamentos hoje | `GET /store/stats/orders?…` · DB-03 § 6.1 |
-| Tabela pedidos | Coluna **Tempo preparo** (`prep_duration_seconds` formatado mm:ss) por linha entregue ou já `PRONTO`+ | Campo em `GET /orders` |
-| **Cardápio** | Top itens (unidades, receita); itens que mais esgotaram limite diário; mix por categoria | DB-03 § 6.2 |
+| **Painel → Pedidos do dia** | Médias de **fila até cozinha**, **preparo**, **balcão**, **entrega**, **total**; volume; p95 preparo; cancelamentos | `GET /store/stats/orders-summary` · DB-03 § 6.1 · [INF-06 § 2.4](INF-06-ui-gerente.md) |
+| Tabela pedidos | **Timer da fase atual** + colunas de durações fechadas ([ORD-01 § 5.7](ORD-01-estados-pedido.md) · [INF-06 § 2.2](INF-06-ui-gerente.md)) | `GET /orders` + campos [DB-04 § 2.2](DB-04-catalogo-checkout-cliente.md) |
+| **Cardápio** | Top itens (unidades, receita); mix por categoria | DB-03 § 6.2 |
 | **Estatísticas** ([HAPPY-19](../fluxos/happypaths/FLUX-HAPPY-19-stats.md)) | Visão completa por período (já existente) | DB-03 § 2 |
 | **Funcionários / motoboys** (futuro próximo) | Entregas por motoboy, tempo médio entrega | DB-03 § 2 Tela 5 |
 

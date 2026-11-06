@@ -11,6 +11,7 @@ O número segue a mesma história do happy path: cardápio, carrinho, pagamento,
 | `FLUX-SAD-08` | Era *CEP fora da zona* — removido com **zonas de frete**; taxa de entrega é **fixa** ([FLUX-HAPPY-12](../happypaths/FLUX-HAPPY-12-horario.md)) |
 | `FLUX-SAD-25` | Era *cupom inválido* — removido com **promoções** no checkout |
 | `FLUX-SAD-12` | Era *cozinha demora aceite* — removido **alerta automático ao gerente** por tempo na fila `RECEBIDO`; pedido continua na fila sem timeout (ORD-01 § 6) |
+| `FLUX-SAD-24` | Era *limite diário por produto* — removido; **não** há teto por SKU, `DAILY_LIMIT_EXCEEDED` nem `product_daily_caps` ([DB-02 § 1.2](../../docTecnica/DB-02-disponibilidade-itens.md)) |
 
 Na pasta, após [FLUX-SAD-07](FLUX-SAD-07-endereco-vazio.md) vem direto o [FLUX-SAD-09](FLUX-SAD-09-cancela-tarde.md). Após [FLUX-SAD-11](FLUX-SAD-11-cancela-loja.md) vem o [FLUX-SAD-13](FLUX-SAD-13-loja-emergencia.md) (sem `FLUX-SAD-12`).
 
@@ -24,8 +25,7 @@ Na pasta, após [FLUX-SAD-07](FLUX-SAD-07-endereco-vazio.md) vem direto o [FLUX-
 |----|-------|-----------|--------|
 | [FLUX-SAD-01-item-cinza](FLUX-SAD-01-item-cinza.md) | Item indisponível no cardápio — fica cinza | 🟡 | 👤 |
 | [FLUX-SAD-02-item-carrinho](FLUX-SAD-02-item-carrinho.md) | Item do carrinho fica indisponível antes do checkout | 🟠 | 👤 🔑 |
-| [FLUX-SAD-03-item-checkout](FLUX-SAD-03-item-checkout.md) | Checkout recusado no servidor (item indisponível ou limite do dia) | 🔴 | 👤 🔑 |
-| [FLUX-SAD-24-limite-dia](FLUX-SAD-24-limite-dia.md) | Limite diário do produto esgotado no checkout (`DAILY_LIMIT_EXCEEDED`) | 🟠 | 👤 🔑 |
+| [FLUX-SAD-03-item-checkout](FLUX-SAD-03-item-checkout.md) | Checkout recusado no servidor (item não está `DISPONIVEL`) | 🔴 | 👤 🔑 |
 | [FLUX-SAD-04-carrinho-sessao](FLUX-SAD-04-carrinho-sessao.md) | Cliente sai do app com itens no carrinho | 🟡 | 👤 |
 | [FLUX-SAD-05-checkout-fecha](FLUX-SAD-05-checkout-fecha.md) | Cliente fecha app no meio do checkout | 🟡 | 👤 |
 | [FLUX-SAD-06-pagamento](FLUX-SAD-06-pagamento.md) | Pagamento falha no checkout | 🔴 | 👤 |
@@ -53,8 +53,7 @@ Na pasta, após [FLUX-SAD-07](FLUX-SAD-07-endereco-vazio.md) vem direto o [FLUX-
 |----|---------|
 | FLUX-SAD-01-item-cinza | Item fica cinza no cardápio — não consegue pedir |
 | FLUX-SAD-02-item-carrinho | Item do carrinho pausado — aviso e remoção |
-| FLUX-SAD-03-item-checkout | Checkout recusado — item indisponível ou limite do dia |
-| FLUX-SAD-24-limite-dia | Limite diário esgotado — ajustar carrinho ou gerente aumenta teto |
+| FLUX-SAD-03-item-checkout | Checkout recusado — item indisponível (disponibilidade mudou) |
 | FLUX-SAD-04-carrinho-sessao | Carrinho persiste ao fechar app; logout limpa; TTL **3 h** |
 | FLUX-SAD-05-checkout-fecha | Fechou app no checkout — nada criado |
 | FLUX-SAD-06-pagamento | Pagamento falha — nada cobrado |

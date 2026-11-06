@@ -79,8 +79,8 @@ flowchart TD
 
 **Objetivo:** API de produtos/categorias e loja configurada para o cliente conseguir pedir depois.
 
-| Docs | **DB-02** (loja, availability, caps, `products` § 1, **`fixed_delivery_fee_cents`**) · **DB-04** §1 categorias · **INF-02** § 11 · **INF-04** § 4 · **HAPPY-12** (WhatsApp, timezone, taxa entrega) · **HAPPY-09** · **HAPPY-10** |
-| DB | `product_categories`, `products`, `product_daily_caps`, enums availability; coluna `stores.fixed_delivery_fee_cents` |
+| Docs | **DB-02** (loja, availability, `products` § 1, **`fixed_delivery_fee_cents`**) · **DB-04** §1 categorias · **INF-02** § 11 · **INF-04** § 4 · **HAPPY-12** (WhatsApp, timezone, taxa entrega) · **HAPPY-09** · **HAPPY-10** |
+| DB | `product_categories`, `products`, enums `availability`; coluna `stores.fixed_delivery_fee_cents` |
 | Backend | Rotas `/menu`, `/store/products*`, `/store/settings`; `resolveStoreStatus` |
 | Front | `web-operacao`: login gerente, config loja, cardápio |
 
@@ -99,11 +99,11 @@ flowchart TD
 | 3 | **HAPPY-03** (carrinho local) |
 | 4 | **HAPPY-04** · DB-04 §4 endereços |
 | 5 | **HAPPY-21** · **HAPPY-08** · DB-04 §2–8 · **ORD-01** §7 · **INF-03** §3.1 (login 3 meses) |
-| 6 | Sad de checkout | **SAD-03**, **SAD-06**, **SAD-07**, **SAD-24**, **SAD-02** |
+| 6 | Sad de checkout | **SAD-03**, **SAD-06**, **SAD-07**, **SAD-02** |
 
 | Backend (contrato crítico) | |
 |----------------------------|---|
-| `POST /orders` | `@Transactional`: itens DISPONIVEL, `shoppingSessionId` ou loja aberta na entrada, caps, taxa fixa, payment mock, `display_number`, `order_items` |
+| `POST /orders` | `@Transactional`: itens DISPONIVEL, `shoppingSessionId` ou loja aberta na entrada, taxa fixa, payment mock, `display_number`, `order_items` |
 | Sessão compra / histórico | `client_shopping_sessions`; `GET /orders/me`; `POST /orders/{id}/reorder` |
 | Front | Carrinho DataStore (TTL 3 h, limpa no logout); gate loja na entrada; histórico + refazer |
 | Idempotency-Key | Obrigatório no checkout (INF-02) |
@@ -112,13 +112,13 @@ flowchart TD
 
 ---
 
-### Fase 3 — Tempo real, timeline, nos contacte
+### Fase 3 — Tempo real, timeline, Fale conosco
 
 **Objetivo:** cliente vê estado mudar sem refresh; links WhatsApp.
 
 | Docs | **INF-01** · **INF-02** (push `order:{id}`, `kitchen:{storeId}`) · **DB-01** · **HAPPY-06** · **HAPPY-17** · **HAPPY-08** (histórico) |
 | Backend | WebSocket STOMP; `GET /store/contact-links`; `GET /orders/{id}/contact-links` |
-| Front | `app-cliente`: acompanhar pedido, nos contacte, histórico |
+| Front | `app-cliente`: acompanhar pedido, Fale conosco, histórico |
 
 **Depende de:** Fase 2 (pedido existe). Pode **começar em paralelo** à Fase 4 assim que o primeiro pedido `RECEBIDO` existir.
 
@@ -128,8 +128,8 @@ flowchart TD
 
 **Objetivo:** fila esquerda, preparo direita, `EM_PREPARO` → `PRONTO`.
 
-| Docs | **ORD-01** §5–§5.4 · **INF-04** §1 · **INF-02** `@MessageMapping` accept + ready · **HAPPY-11** · **HAPPY-13** (login cozinha) |
-| Backend | `prep_started_at` / `prep_duration_seconds` |
+| Docs | **ORD-01** §5–§5.4 · **INF-07** · **INF-02** `@MessageMapping` accept + ready · **HAPPY-11** · **HAPPY-13** (login cozinha) |
+| Backend | `last_queue_started_at`, `prep_started_at`, `prep_completed_at`, `allocation_wait_seconds`, `prep_duration_seconds` ([DB-04](docTecnica/DB-04-catalogo-checkout-cliente.md) § 2.5) |
 | Front | KDS lista + seleção + Preparar/Concluir + timer |
 
 **Depende de:** pedidos `RECEBIDO` (Fase 2) + push cozinha (Fase 3 recomendada).
@@ -140,9 +140,9 @@ flowchart TD
 
 **Objetivo:** fila `PRONTO`, `POST /take`, acompanhamento, `POST /deliver`.
 
-| Docs | **HAPPY-16** (turno) · **HAPPY-20** · **INF-04** §2 · **INF-02** take/deliver · **DB-01** navigation-links · **HAPPY-15** |
-| Backend | Lock motoboy; `delivery_persons` status; tópico `delivery:{storeId}` |
-| Front | `app-motoboy` |
+| Docs | **HAPPY-16** (turno) · **HAPPY-20** · **INF-08** · **INF-02** take/deliver · **DB-01** navigation-links · **HAPPY-15** |
+| Backend | Lock motoboy; `dispatch_started_at`, `balcao_wait_seconds`, `delivered_at`, `delivery_duration_seconds`, `total_fulfillment_seconds` no `take`/`deliver` ([DB-04](docTecnica/DB-04-catalogo-checkout-cliente.md) § 2.5); `delivery_persons` status; tópico `delivery:{storeId}` |
+| Front | `app-motoboy` + **timer** na entrega ([ORD-01](docTecnica/ORD-01-estados-pedido.md) § 5.6) |
 
 | Sad | **SAD-15**, **SAD-16**, **SAD-10** |
 
@@ -154,9 +154,9 @@ flowchart TD
 
 **Objetivo:** cancelamentos, painel, funcionários.
 
-| Docs | **HAPPY-18** · **HAPPY-07** · **HAPPY-13** · **SAD-11** · cancelamentos ORD-01 §2 |
-| Backend | `POST /orders/{id}/cancel`, FGAC gerente |
-| Front | Painel dia, exceções |
+| Docs | **HAPPY-18** · **INF-06** §2 · **HAPPY-07** · **HAPPY-13** · **SAD-11** · cancelamentos ORD-01 §2 |
+| Backend | `POST /orders/{id}/cancel`, FGAC gerente; `GET /orders` com timestamps/durações ([DB-04](docTecnica/DB-04-catalogo-checkout-cliente.md) § 2.2); `GET /store/stats/orders-summary` ([DB-03](docTecnica/DB-03-telemetria.md) § 6.1) |
+| Front | Painel dia (**timer por fase** + colunas + rodapé), exceções |
 
 ---
 
@@ -177,16 +177,16 @@ flowchart TD
 [F1] DB-02 + DB-04§1 + HAPPY-12/09/10  (gerente prepara loja e cardápio)
   ↓
 [F2] HAPPY-01 → 02 → 02-recuperacao → 22 → 03 → 04 → 21
-     ORD-01 (checkout + pagamento) + SAD-03/06/07/08/24/02
+     ORD-01 (checkout + pagamento) + SAD-03/06/07/08/02
   ↓
-[F3] INF-01 + HAPPY-06 + HAPPY-17 + DB-01  (timeline + nos contacte)
+[F3] INF-01 + HAPPY-06 + HAPPY-17 + DB-01  (timeline + Fale conosco)
   ↓
-[F4] ORD-01§5 + INF-04§1 + INF-02 accept/ready + HAPPY-11 + HAPPY-13
+[F4] ORD-01§5 + INF-07 + INF-02 accept/ready + HAPPY-11 + HAPPY-13
   ↓
-[F5] HAPPY-16 + HAPPY-20 + INF-04§2 + INF-02 take/deliver + HAPPY-15 + SAD-15/16/10
+[F5] HAPPY-16 + HAPPY-20 + INF-08 + INF-02 take/deliver + HAPPY-15 + SAD-15/16/10
      ⇒ HAPPY-05 end-to-end
   ↓
-[F6] HAPPY-18/07/13 + SAD-11 …
+[F6] HAPPY-18/07/13 + INF-06 + SAD-11 …
   ↓
 [F7] SAD-18/19/21 + DB-03 + HAPPY-19
 ```
@@ -209,11 +209,13 @@ flowchart TD
 
 ## 5. Checklist por módulo Spring (referência)
 
+Stack do monólito: **Spring Boot (Kotlin)**, **Spring Data JPA**, **Hibernate**, **PostgreSQL** — peculiaridades e Gradle em [`docTecnica/INF-05-kotlin-spring-jpa.md`](docTecnica/INF-05-kotlin-spring-jpa.md).
+
 Ordem sugerida de pacotes/domínio:
 
 1. `identity` (users, auth)  
 2. `store` (stores, schedules, zones)  
-3. `catalog` (categories, products, caps, availability)  
+3. `catalog` (categories, products, availability)  
 4. `customer` (addresses, payment methods)  
 5. `order` (checkout, state machine, display_number, events)  
 6. `kitchen` (queue service, accept, ready)  
@@ -230,23 +232,24 @@ Policies (`PedidoPolicy`, etc.) **no mesmo PR** da rota que as usa.
 | Fatia | Ler primeiro |
 |-------|----------------|
 | Qualquer API autenticada | INF-03, pitch RBAC |
-| Checkout | DB-02 §1.2, DB-04, ORD-01 §7, INF-02 POST orders |
-| KDS | ORD-01 §5, INF-04 §1, INF-02 §4 accept/ready |
-| Motoboy | ORD-01 estados, INF-04 §2, INF-02 §6, DB-01 |
+| Checkout | DB-02 §1.2, DB-04, ORD-01 §7, INF-02 § 11.4 |
+| KDS | ORD-01 §5, INF-07, INF-02 §4 accept/ready |
+| Motoboy | ORD-01 estados, INF-08, INF-02 §6, DB-01 |
+| Painel gerente | INF-06, DB-04 §2.2, DB-03 §6.1 |
 | Contatos | DB-01, HAPPY-17 |
-| UI cliente | INF-04 §3 |
+| UI cliente | INF-09 |
 
 ---
 
 ## 7. Definição de pronto (MVP demo)
 
-- [ ] Cliente: cadastro, login, reset senha, cardápio por categoria, carrinho, checkout mock, timeline, nos contacte  
-- [ ] Cozinha: KDS lista + seleção + Preparar + Concluir preparo + timer; código na embalagem = `display_number`
-- [ ] Gerente: painel com coluna tempo preparo + rodapé estatísticas (DB-03 § 6)  
+- [ ] Cliente: cadastro, login, reset senha, cardápio por categoria, carrinho, checkout mock, timeline, Fale conosco  
+- [ ] Cozinha: KDS lista + seleção + Preparar + Concluir preparo + timer; **maquininha** imprime recibo grampeado no pacote com `display_number` (+ nome, itens/valores, total, data)
+- [ ] Gerente: painel com **timer da fase ativa** + colunas de tempos gravados + rodapé com **médias por fase** (DB-04 § 2 · DB-03 § 6.1 · INF-06 § 2)  
 - [ ] Motoboy: turno, fila prontos, aceitar, maps/whatsapp, finalizar entrega  
 - [ ] Gerente: cardápio, loja (incl. taxa entrega fixa), funcionários, cancelar pedido, painel básico  
 - [ ] Concorrência: dois motoboys no mesmo pedido → 409 (HAPPY-15)  
-- [ ] Checkout: item pausado / limite dia / pagamento falha → rollback (SAD-03, 24, 06)
+- [ ] Checkout: item pausado / pagamento falha → rollback (SAD-03, 06)
 
 ---
 

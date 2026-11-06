@@ -18,14 +18,14 @@ Login → cardápio em colunas/seções → adiciona quantidade → carrinho
 
 ## Seções do cardápio (MVP)
 
+Toda a oferta é **vegana**; o cardápio não separa seções “vegetariano” vs “vegano”.
+
 O app lista produtos **disponíveis para pedido** (`DISPONIVEL`) agrupados nesta ordem (seed DB-04):
 
 | Seção | Exemplos |
 |-------|----------|
 | Hambúrgueres tradicionais | Clássicos da casa |
 | Hambúrgueres premium | Linha especial |
-| Hambúrgueres vegetarianos | Sem carne animal |
-| Hambúrgueres veganos | 100% plant-based |
 | Acompanhamentos | Porção de batata **para uma pessoa** |
 | Adicionais — hambúrguer | Extra proteína, queijo etc. |
 | Adicionais — molhos | Molhos extras |
@@ -48,4 +48,4 @@ Itens `PAUSADO_DIA` / `BLOQUEADO` aparecem **cinza** na seção (não entram no 
 | 3 | Sistema | Atualiza badge do carrinho e subtotal local |
 | 4 | 👤 Cliente | Abre o **carrinho** para revisar ([FLUX-HAPPY-03-carrinho](FLUX-HAPPY-03-carrinho.md)) |
 
-Quantidade máxima respeita **limite diário restante** quando houver teto (DB-02 § 1.2).
+O app **não** impõe teto de quantidade por produto; só o próprio cliente ajusta **+** / **−** (itens `DISPONIVEL` — [DB-02 § 1.2](../../docTecnica/DB-02-disponibilidade-itens.md)).
